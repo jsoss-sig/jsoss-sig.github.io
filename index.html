@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns="//www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
     <head>
-	<meta name="generator" content="Hugo 0.17" />
+	<meta name="generator" content="Hugo 0.18.1" />
         
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
@@ -57,11 +57,52 @@
                         <div class="li-article">
                             <article>
     <header>
+        <h2><a href="https://jsosug.github.io/post/omok-selinux-docker-20170123/">Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again) </a></h2>
+        <time class="li-article-date">Monday, January 23, 2017</time>
+    </header>
+    <section class="li-article-section">
+        This blog is for following up to reproduce CVE-2016-9962(vulnerability for Docker) and how can we mitigate it by using SELinux.
+Reference [Docker vulnerability (CVE-2016-9962) PoC with SELinux](https://jsosug.github.io/post/omok-selinux-docker-20170118/)
+https://bugzilla.redhat.com/show_bug.cgi?id=1409531 https://bugzilla.suse.com/show_bug.cgi?id=1012568#c2 Mistake in Previous PoC I sent previous PoC result to SELinux , I got result I did mistake in Previous PoC. Actually, I didn&rsquo;t use SELinux Access Control in Previous PoC
+In Previous PoC, &ldquo;[PoC] run container(sh) in shell1;&rdquo;
+[root@localhost ~]# runc run ctr / #  But Finally I found the &ldquo;runc&rdquo; program is working in &ldquo;unconfined_t&rdquo; domain.
+    </section>
+    <footer>
+        <a href='https://jsosug.github.io/post/omok-selinux-docker-20170123/'>More</a>
+    </footer>
+</article>
+
+                        </div>
+                    
+                        <div class="li-article">
+                            <article>
+    <header>
+        <h2><a href="https://jsosug.github.io/post/omok-selinux-docker-20170118/">Docker vulnerability (CVE-2016-9962) PoC with SELinux </a></h2>
+        <time class="li-article-date">Tuesday, January 17, 2017</time>
+    </header>
+    <section class="li-article-section">
+        Here we described how to reproduce CVE-2016-9962(vulnerability for Docker) and how can we protect it by using SELinux.
+Reference https://bugzilla.redhat.com/show_bug.cgi?id=1409531 https://bugzilla.suse.com/show_bug.cgi?id=1012568#c2 Prepare for PoC Here is a description how to reproduce it. I used Fedora25 for this PoC.
+This vulnerability is quite hard to reproduce because there&rsquo;s not so much race window on runc. Also, we need to add &ldquo;CAP_SYS_PTRACE&rdquo; to container for checking other container&rsquo;s status.
+ Install docker, runc on your PC.
+    </section>
+    <footer>
+        <a href='https://jsosug.github.io/post/omok-selinux-docker-20170118/'>More</a>
+    </footer>
+</article>
+
+                        </div>
+                    
+                        <div class="li-article">
+                            <article>
+    <header>
         <h2><a href="https://jsosug.github.io/about/">About SOSS SIG </a></h2>
         <time class="li-article-date">Saturday, December 17, 2016</time>
     </header>
     <section class="li-article-section">
-         SOSS SIGとは 
+        SOSS SIGとは OSSセキュリティ技術の会(Secure OSS SIG)
+ＯＳＳセキュリティ技術の発展は目覚ましいものがあります。例えば、トラステッドＯＳと呼ばれていた軍用技術が今やLinuxに標準で取り込まれています。しかし、これらの技術は主に米国等海外で開発されており、日本語での情報が乏しく日本ではＯＳＳセキュリティ技術は十分に活用されていません。「ＯＳＳセキュリティ技術の会（英文名：Secure OSS SIG）」は、グローバルコミュニティで開発されるＯＳＳのセキュリティ技術の普及促進・技術者の交流促進を目的に設立されました。本会では、SELinux等のプラットフォームセキュリティ技術を中心として、勉強会の開催・Webでの情報発信などを行います。
+2017/1/23現在、設立準備中です。
     </section>
     <footer>
         <a href='https://jsosug.github.io/about/'>More</a>

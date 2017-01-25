@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html xmlns="//www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+
+    <head>
+        
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+        <title>Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again) &middot; Secure OSS SIG</title>
+        <link rel='stylesheet' href='//fonts.googleapis.com/css?family=Open+Sans:400,300,600' type='text/css'>
+        <link rel="stylesheet" href="https://jsosug.github.io//libraries/normalize.3.0.1.css" />
+        <link rel="stylesheet" href="https://jsosug.github.io//css/liquorice.css" />
+        <link rel="shortcut icon" href="https://jsosug.github.io/favicon.ico" />
+        <link rel="apple-touch-icon-precomposed" href="https://jsosug.github.io/apple-touch-icon-144-precomposed.png" sizes="144x144" />
+        <link rel="alternate" href="" type="application/rss+xml" title="Secure OSS SIG" />
+    </head>
+    <body class="li-body">
+
+<header class="li-page-header">
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <div class="li-brand li-left">
+                <a href="https://jsosug.github.io/">Secure OSS SIG</a></div>
+                <div class="li-menu li-right">
+                    <span class="li-menu-icon" onclick="javascript:toggle('menu');">&#9776;</span>
+                    <ul id="menu2" class="li-menu-items">
+                        
+                            <li><a href="https://jsosug.github.io/about/"> about SOSS </a></li>
+                        
+                            <li><a href="https://jsosug.github.io/post/"> Blog </a></li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="sixteen columns">
+                <ul id="menu" class="li-menu-items li-menu-mobile">
+                    
+                        <li><a href="https://jsosug.github.io/about/"> about SOSS </a></li>
+                    
+                        <li><a href="https://jsosug.github.io/post/"> Blog </a></li>
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <article class="li-article">
+                    <header class="li-article-header">
+                        <h1 class="li-article-title">Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again)</h1>
+                        <span class="li-article-taxonomies">
+                            
+
+                            
+                        </span>
+                        
+                        <time class="li-article-date">Monday, January 23, 2017</time>
+                    </header>
+                    <section>
+                        
+
+<p>This blog is for following up to reproduce CVE-2016-9962(vulnerability for
+Docker) and how can we mitigate it by using SELinux.</p>
+
+<hr />
+
+<h2 id="reference">Reference</h2>
+
+<h4 id="docker-vulnerability-cve-2016-9962-poc-with"><a href="https://jsosug.github.io/post/omok-selinux-docker-20170118/">[Docker vulnerability (CVE-2016-9962) PoC with SELinux]</a></h4>
+
+<h4 id="https-bugzilla-redhat-com-show-bug-cgi-id-1409531"><a href="https://bugzilla.redhat.com/show_bug.cgi?id=1409531">https://bugzilla.redhat.com/show_bug.cgi?id=1409531</a></h4>
+
+<h4 id="https-bugzilla-suse-com-show-bug-cgi-id-1012568-c2"><a href="https://bugzilla.suse.com/show_bug.cgi?id=1012568#c2">https://bugzilla.suse.com/show_bug.cgi?id=1012568#c2</a></h4>
+
+<h2 id="mistake-in-previous-poc">Mistake in Previous PoC</h2>
+
+<p>I sent previous PoC result to SELinux , I got result I did mistake in Previous
+PoC. </p>
+<p><strong>Actually, I didn&rsquo;t use SELinux Access Control in Previous PoC</strong></p>
+
+<p>In Previous PoC, &ldquo;[PoC] run container(sh) in shell1;&rdquo;</p>
+
+<pre><code>[root@localhost ~]# runc run ctr
+
+/ #
+</code></pre>
+
+<p>But Finally I found the &ldquo;runc&rdquo; program is working in &ldquo;unconfined_t&rdquo; domain.
+From another terminal, I checked runc domain;</p>
+
+<pre><code>[root@fedora25 ~]# ps axZ|grep runc
+unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 1578 pts/0 Sl+
+0:00 runc run ctr
+</code></pre>
+
+<p>So this means runc is working in unconfined_t domain, then that runc is having
+lots of permissions(actually un-confined) from SELinux.</p>
+
+<p>This is a reason why SELinux couldn&rsquo;t mitigate my previous PoC.</p>
+
+<h2 id="assign-container-t-domain-on-runc">Assign &ldquo;container_t&rdquo; domain on runc.</h2>
+
+<p>When I checked Fedora25 SELinux Policy, I found that container_t domain is
+switched from container_runtime_t(which is domain for docker process, etc.).
+And container_runtime_t is transited from initrc domain by exec
+container_runtime_exec_t file(/usr/bin/runc), such as;</p>
+
+<pre><code>[root@fedora25 ~]# ls -lZ /usr/bin/runc
+-rwxr-xr-x. 1 root root system_u:object_r:container_runtime_exec_t:s0 5016704 Jan 20 19:26 /usr/bin/runc
+
+
+
+./container.cil:(typetransition initrc_domain container_runtime_exec_t process c
+ontainer_runtime_t)
+</code></pre>
+
+<p>Then, for doing PoC more close to existance situation, we need to run &ldquo;runc&rdquo;
+as &ldquo;container_t&rdquo; domain.</p>
+
+<p>For running &ldquo;runc&rdquo; as &ldquo;container_t&rdquo; domain, we need to add several policy
+(typetransition rule and more allow rule) to transit from unconfined_t to
+container_t domain. Also I changed PoC directory from /root to /tmp.</p>
+
+<h2 id="changed-poc-directory">Changed PoC directory.</h2>
+
+<p>For more easy to write Policy for this PoC, I changed PoC directory to /tmp
+/PoC-CVE-2016-9962;</p>
+
+<pre><code>[root@fedora25 PoC-CVE-2016-9962]# pwd
+/tmp/PoC-CVE-2016-9962
+[root@fedora25 PoC-CVE-2016-9962]# ls -l
+total 4
+-rw-r--r--.  1 root root 2364 Jan 20 09:04 config.json
+drwxr-xr-x. 18 root root  380 Jan 23 12:33 rootfs
+</code></pre>
+
+<h2 id="additional-policy">Additional Policy</h2>
+
+<p>Just for PoC, I made below policy rule file as &ldquo;/root/custom_policy/runc.cil&rdquo;;</p>
+
+<pre><code>(typetransition unconfined_usertype container_runtime_exec_t process container_t
+)
+(roletransition unconfined_r container_runtime_exec_t process system_r)
+
+(allow container_t user_tmp_t (file (open read execute execute_no_trans)))
+(allow container_t var_run_t (dir (write add_name create setattr remove_name rmd
+ir)))
+(allow container_t var_run_t (fifo_file (create setattr unlink read open)))
+(allow container_t ptmx_t (chr_file (read write open ioctl)))
+(allow container_t devpts_t (chr_file (setattr read write open ioctl getattr)))
+(allow container_t root_t (dir (mounton)))
+(allow container_t user_tmp_t (dir (mounton write add_name create remove_name rm
+dir)))
+(allow container_t user_tmp_t (lnk_file (read)))
+(allow container_t proc_t (filesystem (mount remount)))
+(allow container_t tmpfs_t (filesystem (mount remount)))
+(allow container_t tmpfs_t (dir (setattr write add_name create mounton)))
+(allow container_t devpts_t (filesystem (mount)))
+(allow container_t sysfs_t (filesystem (mount)))
+(allow container_t cgroup_t (filesystem (remount)))
+(allow container_t tmpfs_t (lnk_file (create)))
+(allow container_t tmpfs_t (chr_file (create setattr read write open getattr ioc
+tl append)))
+(allow container_t tmpfs_t (file (open create mounton)))
+(allow container_t proc_t (dir (mounton)))
+(allow container_t proc_t (file (mounton)))
+(allow container_t sysctl_irq_t (dir (mounton)))
+(allow container_t sysctl_t (dir (mounton)))
+(allow container_t sysctl_t (file (mounton)))
+(allow container_t proc_kcore_t (file (mounton)))
+(allow container_t nsfs_t (file (getattr read open)))
+(allow container_t var_run_t (file (create read write open unlink)))
+(allow container_t sysfs_t (dir (mounton)))
+(allow container_t kernel_t (unix_stream_socket (read write)))
+(allow init_t kernel_t (unix_stream_socket (read write)))
+(allow container_t init_t (unix_stream_socket (read write)))
+[root@fedora25 custom_policy]# cat runc.cil
+(typetransition unconfined_usertype container_runtime_exec_t process container_t)
+(roletransition unconfined_r container_runtime_exec_t process system_r)
+
+(allow container_t user_tmp_t (file (open read execute execute_no_trans)))
+(allow container_t var_run_t (dir (write add_name create setattr remove_name rmdir)))
+(allow container_t var_run_t (fifo_file (create setattr unlink read open)))
+(allow container_t ptmx_t (chr_file (read write open ioctl)))
+(allow container_t devpts_t (chr_file (setattr read write open ioctl getattr)))
+(allow container_t root_t (dir (mounton)))
+(allow container_t user_tmp_t (dir (mounton write add_name create remove_name rmdir)))
+(allow container_t user_tmp_t (lnk_file (read)))
+(allow container_t proc_t (filesystem (mount remount)))
+(allow container_t tmpfs_t (filesystem (mount remount)))
+(allow container_t tmpfs_t (dir (setattr write add_name create mounton)))
+(allow container_t devpts_t (filesystem (mount)))
+(allow container_t sysfs_t (filesystem (mount)))
+(allow container_t cgroup_t (filesystem (remount)))
+(allow container_t tmpfs_t (lnk_file (create)))
+(allow container_t tmpfs_t (chr_file (create setattr read write open getattr ioctl append)))
+(allow container_t tmpfs_t (file (open create mounton)))
+(allow container_t proc_t (dir (mounton)))
+(allow container_t proc_t (file (mounton)))
+(allow container_t sysctl_irq_t (dir (mounton)))
+(allow container_t sysctl_t (dir (mounton)))
+(allow container_t sysctl_t (file (mounton)))
+(allow container_t proc_kcore_t (file (mounton)))
+(allow container_t nsfs_t (file (getattr read open)))
+(allow container_t var_run_t (file (create read write open unlink)))
+(allow container_t sysfs_t (dir (mounton)))
+(allow container_t kernel_t (unix_stream_socket (read write)))
+(allow init_t kernel_t (unix_stream_socket (read write)))
+(allow container_t init_t (unix_stream_socket (read write)))
+</code></pre>
+
+<h2 id="load-additional-policy-to-poc-system">Load Additional Policy to PoC system</h2>
+
+<p>On the PoC system</p>
+
+<pre><code>[root@fedora25 ~]# semodule -i /root/custom_policy/runc.cil
+</code></pre>
+
+<h2 id="check-custom-policy-is-working-or-not">Check custom policy is working or not.</h2>
+
+<p>After load runc.cil, run &ldquo;runc run ctr&rdquo; in a terminal;</p>
+
+<pre><code>[root@fedora25 PoC-CVE-2016-9962]# runc run ctr
+/ #
+</code></pre>
+
+<p>Then open another terminal and check this &ldquo;runc&rdquo; program is working as
+&ldquo;container_t&rdquo; domain;</p>
+
+<pre><code>[root@fedora25 ~]# ps axZ|grep runc
+unconfined_u:system_r:container_t:s0-s0:c0.c1023 6799 pts/1 Sl+   0:00 runc run ctr
+</code></pre>
+
+<p>If the &ldquo;runc&rdquo; is not working on container_t domain, chack
+/var/log/audit/audit.log and maybe add several another rules to runc.cil.</p>
+
+<h2 id="poc-again">PoC(Again!)</h2>
+
+<ul>
+<li><p>open 2 terminals(shell1, shell2).</p></li>
+
+<li><p>Check SELinux is enabled;</p>
+
+<pre><code>[root@localhost ~]# getenforce
+
+Enforcing
+</code></pre>
+</li>
+
+<li><p>run container(sh) in shell1;</p>
+
+<pre><code>[root@localhost ~]# runc run ctr
+/ #
+</code></pre>
+</li>
+
+<li><p>run new container in shell2 with &ldquo;runc exec&rdquo; command. It is pausing 500sec;</p>
+
+<pre><code>[root@localhost ~]# runc run ctr
+</code></pre></li>
+
+<li><p>run &ldquo;ps ax&rdquo; in shell1. You can see shell2 process;</p>
+
+<pre><code>[root@localhost ~]# runc run ctr
+/ # ps ax
+PID   USER     TIME   COMMAND
+    1 root       0:00 sh
+    6 root       0:00 /proc/self/exe init
+   11 root       0:00 ps ax
+/ #
+</code></pre>
+</li>
+
+<li><p>In above case, check /proc/6/fd by ls command. You see path as fd/4;</p>
+
+<pre><code>
+/ # ls -la /proc/6/fd/
+total 0
+dr-x------    2 root     root             0 Jan 16 06:43 .
+dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
+lrwx------    1 root     root            64 Jan 16 06:43 0 -> /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 1 -> /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 2 -> /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 3 -> socket:[40487]
+lr-x------    1 root     root            64 Jan 16 06:43 4 -> /run/runc/ctr
+lrwx------    1 root     root            64 Jan 16 06:43 5 -> /dev/pts/4
+lr-x------    1 root     root            64 Jan 16 06:43 6 -> pipe:[40496]
+l-wx------    1 root     root            64 Jan 16 06:43 7 -> /dev/null
+/ #</p>
+</code></pre>
+</li>
+<li><p>Do ls /etc/shadow file by using &ldquo;/proc/6/fd/4/../../../etc/shadow&rdquo; path;</p>
+
+<pre><code>/ # ls -l /proc/6/fd/4/../../../etc/shadow
+
+ls: /proc/6/fd/4/../../../etc/shadow: Permission denied
+</code></pre>
+</li>
+</ul>
+
+<p>Check /var/log/audit/audit.log;</p>
+
+<pre><code>    type=AVC msg=audit(1485143271.659:3107): avc:  denied  { getattr } for  pid=8847 comm=&quot;ls&quot; path=&quot;/etc/shadow&quot; dev=&quot;dm-0&quot; ino=785423 scontext=unconfined_u:system_r:container_t:s0-s0:c0.c1023 tcontext=system_u:object_r:shadow_t:s0 tclass=file permissive=0
+</code></pre>
+
+<strong><p>Fine, Now SELinux is protecting to search /etc/shadow file.</p></strong>
+
+<ul>
+<li><p>Also you can&rsquo;t read /etc/shadow file because the file permission is &ldquo;000&rdquo;.</p>
+
+<pre><code>/ # cat /proc/6/fd/4/../../../etc/shadow
+
+cat: can&rsquo;t open &lsquo;/proc/6/fd/4/../../../etc/shadow&rsquo;: Permission denied
+</code></pre></li>
+</ul>
+
+<p>If I change /etc/shadow file as &ldquo;755&rdquo; permission, the DAC control will permit
+to read the file.</p>
+
+<pre><code>
+[root@fedora25 ~]# chmod 755 /etc/shadow
+[root@fedora25 ~]# ls -lh /etc/shadow
+-rwxr-xr-x. 1 root root 1.3K Jan 20 08:30 /etc/shadow
+</code></pre>
+
+<p>But still I can&rsquo;t read /etc/shadow file ;</p>
+
+<pre><code>    / # cat /proc/6/fd/4/../../../etc/shadow
+cat: can't open '/proc/6/fd/4/../../../etc/shadow': Permission denied
+</code></pre>
+
+<p>I could see in the /var/log/audit/audit.log file that the&rdquo;read&rdquo; action is
+denied by SELinux;</p>
+
+<pre><code>    type=AVC msg=audit(1485143502.183:3311): avc:  denied  { read } for  pid=9418 comm=&quot;cat&quot; name=&quot;shadow&quot; dev=&quot;dm-0&quot; ino=785423 scontext=unconfined_u:system_r:container_t:s0-s0:c0.c1023 tcontext=system_u:object_r:shadow_t:s0 tclass=file permissive=0
+</code></pre>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<strong><p>Now we know from PoC that we could mitigate CVE-2016-9962 by enabling SELinux.</p></strong>
+
+<p>So we should enable SELinux in container environment also and making more
+safety(and keeping to have mitigate way even if in 0-day situation)
+environment.</p>
+
+                    </section>
+                </article>
+            </div>
+        </div>
+
+        <div class="row li-author">
+    <div class="sixteen columns">
+        Written by <strong>SOSS SIG</strong>
+    </div>
+</div>
+
+
+        <div class="row li-pagination">
+            <div class="eight columns">
+                <div class="li-pagination-previous">
+                    
+                        &nbsp;
+                    
+                </div>
+            </div>
+            <div class="eight columns">
+                <div class="li-pagination-next">
+                    
+                        Older article<br />
+                        <a href="https://jsosug.github.io/about/"> About SOSS SIG</a>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+<footer class="li-page-footer">
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <div class="li-page-footer-legal">
+                    SOSS SIG all rights reserved. 2016
+                </div>
+                <div class="li-page-footer-theme">
+                    <span class=""><a href="https://github.com/eliasson/liquorice/">liquorice</a> is a theme for <a href="http://hugo.spf13.com">hugo</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <script type="text/javascript">
+    <!--
+    function toggle(id) {
+        var e = document.getElementById(id);
+        e.style.display == 'block' ? e.style.display = 'none' : e.style.display = 'block';
+    }
+    
+    </script>
+    <script type="text/javascript">
+    <!--
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', ""]);
+        _gaq.push(['_trackPageview']);
+
+        (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    -->
+    </script>
+    </body>
+</html>
+
