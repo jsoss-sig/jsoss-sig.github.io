@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Posts on Secure OSS SIG</title>
-    <link>https://jsosug.github.io/post/index.xml</link>
+    <link>https://jsoss-sig.github.io/post/index.xml</link>
     <description>Recent content in Posts on Secure OSS SIG</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
     <lastBuildDate>Mon, 23 Jan 2017 13:07:34 +0900</lastBuildDate>
-    <atom:link href="https://jsosug.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://jsoss-sig.github.io/post/index.xml" rel="self" type="application/rss+xml" />
     
     <item>
       <title>Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again)</title>
-      <link>https://jsosug.github.io/post/omok-selinux-docker-20170123/</link>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-docker-20170123/</link>
       <pubDate>Mon, 23 Jan 2017 13:07:34 +0900</pubDate>
       
-      <guid>https://jsosug.github.io/post/omok-selinux-docker-20170123/</guid>
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-docker-20170123/</guid>
       <description>
 
 &lt;p&gt;This blog is for following up to reproduce CVE-2016-9962(vulnerability for
@@ -27,7 +27,7 @@ Docker) and how can we mitigate it by using SELinux.&lt;/p&gt;
 
 &lt;h4 id=&#34;docker-vulnerability-cve-2016-9962-poc-with&#34;&gt;[Docker vulnerability (CVE-2016-9962) PoC with&lt;/h4&gt;
 
-&lt;p&gt;SELinux](&lt;a href=&#34;https://jsosug.github.io/post/omok-selinux-docker-20170118/&#34;&gt;https://jsosug.github.io/post/omok-selinux-docker-20170118/&lt;/a&gt;)&lt;/p&gt;
+&lt;p&gt;SELinux](&lt;a href=&#34;https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/&#34;&gt;https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/&lt;/a&gt;)&lt;/p&gt;
 
 &lt;h4 id=&#34;https-bugzilla-redhat-com-show-bug-cgi-id-1409531&#34;&gt;&lt;a href=&#34;https://bugzilla.redhat.com/show_bug.cgi?id=1409531&#34;&gt;https://bugzilla.redhat.com/show_bug.cgi?id=1409531&lt;/a&gt;&lt;/h4&gt;
 
@@ -306,10 +306,10 @@ environment.&lt;/p&gt;
     
     <item>
       <title>Docker vulnerability (CVE-2016-9962) PoC with SELinux</title>
-      <link>https://jsosug.github.io/post/omok-selinux-docker-20170118/</link>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/</link>
       <pubDate>Tue, 17 Jan 2017 03:27:40 +0900</pubDate>
       
-      <guid>https://jsosug.github.io/post/omok-selinux-docker-20170118/</guid>
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/</guid>
       <description>
 
 &lt;p&gt;Here we described how to reproduce CVE-2016-9962(vulnerability for Docker) and
