@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html xmlns="//www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
-
     <head>
         
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
@@ -71,13 +70,15 @@
                         
 
 <p>This blog is for following up to reproduce CVE-2016-9962(vulnerability for
-Docker) and how can we mitigate it by using SELinux.</p>
+Docker) and how can we mitigate it by using SELinux. (Written by Kazuki Omo: ka-omo@sios.com)</p>
 
 <hr />
 
 <h2 id="reference">Reference</h2>
 
-<h4 id="docker-vulnerability-cve-2016-9962-poc-with"><a href="https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/">[Docker vulnerability (CVE-2016-9962) PoC with SELinux]</a></h4>
+<h4 id="docker-vulnerability-cve-2016-9962-poc-with">[Docker vulnerability (CVE-2016-9962) PoC with</h4>
+
+<p>SELinux](<a href="https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/">https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/</a>)</p>
 
 <h4 id="https-bugzilla-redhat-com-show-bug-cgi-id-1409531"><a href="https://bugzilla.redhat.com/show_bug.cgi?id=1409531">https://bugzilla.redhat.com/show_bug.cgi?id=1409531</a></h4>
 
@@ -86,8 +87,7 @@ Docker) and how can we mitigate it by using SELinux.</p>
 <h2 id="mistake-in-previous-poc">Mistake in Previous PoC</h2>
 
 <p>I sent previous PoC result to SELinux , I got result I did mistake in Previous
-PoC. </p>
-<p><strong>Actually, I didn&rsquo;t use SELinux Access Control in Previous PoC</strong></p>
+PoC. <strong>Actually, I didn&rsquo;t use SELinux Access Control in Previous PoC</strong></p>
 
 <p>In Previous PoC, &ldquo;[PoC] run container(sh) in shell1;&rdquo;</p>
 
@@ -253,17 +253,16 @@ unconfined_u:system_r:container_t:s0-s0:c0.c1023 6799 pts/1 Sl+   0:00 runc run 
 <li><p>Check SELinux is enabled;</p>
 
 <pre><code>[root@localhost ~]# getenforce
-
-Enforcing
 </code></pre>
-</li>
+
+<p>Enforcing</p></li>
 
 <li><p>run container(sh) in shell1;</p>
 
 <pre><code>[root@localhost ~]# runc run ctr
-/ #
 </code></pre>
-</li>
+
+<p>/ #</p></li>
 
 <li><p>run new container in shell2 with &ldquo;runc exec&rdquo; command. It is pausing 500sec;</p>
 
@@ -273,40 +272,39 @@ Enforcing
 <li><p>run &ldquo;ps ax&rdquo; in shell1. You can see shell2 process;</p>
 
 <pre><code>[root@localhost ~]# runc run ctr
-/ # ps ax
+</code></pre>
+
+<p>/ # ps ax
 PID   USER     TIME   COMMAND
     1 root       0:00 sh
     6 root       0:00 /proc/self/exe init
    11 root       0:00 ps ax
-/ #
-</code></pre>
-</li>
+/ #</p></li>
 
 <li><p>In above case, check /proc/6/fd by ls command. You see path as fd/4;</p>
 
-<pre><code>
-/ # ls -la /proc/6/fd/
-total 0
-dr-x------    2 root     root             0 Jan 16 06:43 .
-dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
-lrwx------    1 root     root            64 Jan 16 06:43 0 -> /dev/pts/4
-lrwx------    1 root     root            64 Jan 16 06:43 1 -> /dev/pts/4
-lrwx------    1 root     root            64 Jan 16 06:43 2 -> /dev/pts/4
-lrwx------    1 root     root            64 Jan 16 06:43 3 -> socket:[40487]
-lr-x------    1 root     root            64 Jan 16 06:43 4 -> /run/runc/ctr
-lrwx------    1 root     root            64 Jan 16 06:43 5 -> /dev/pts/4
-lr-x------    1 root     root            64 Jan 16 06:43 6 -> pipe:[40496]
-l-wx------    1 root     root            64 Jan 16 06:43 7 -> /dev/null
-/ #</p>
+<pre><code>/ # ls -la /proc/6/fd/
 </code></pre>
-</li>
+
+<p>total 0
+dr-x&mdash;&mdash;    2 root     root             0 Jan 16 06:43 .
+dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
+lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 0 -&gt; /dev/pts/4
+lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 1 -&gt; /dev/pts/4
+lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 2 -&gt; /dev/pts/4
+lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 3 -&gt; socket:[40487]
+lr-x&mdash;&mdash;    1 root     root            64 Jan 16 06:43 4 -&gt; /run/runc/ctr
+lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 5 -&gt; /dev/pts/4
+lr-x&mdash;&mdash;    1 root     root            64 Jan 16 06:43 6 -&gt; pipe:[40496]
+l-wx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 7 -&gt; /dev/null
+/ #</p></li>
+
 <li><p>Do ls /etc/shadow file by using &ldquo;/proc/6/fd/4/../../../etc/shadow&rdquo; path;</p>
 
 <pre><code>/ # ls -l /proc/6/fd/4/../../../etc/shadow
-
-ls: /proc/6/fd/4/../../../etc/shadow: Permission denied
 </code></pre>
-</li>
+
+<p>ls: /proc/6/fd/4/../../../etc/shadow: Permission denied</p></li>
 </ul>
 
 <p>Check /var/log/audit/audit.log;</p>
@@ -314,22 +312,21 @@ ls: /proc/6/fd/4/../../../etc/shadow: Permission denied
 <pre><code>    type=AVC msg=audit(1485143271.659:3107): avc:  denied  { getattr } for  pid=8847 comm=&quot;ls&quot; path=&quot;/etc/shadow&quot; dev=&quot;dm-0&quot; ino=785423 scontext=unconfined_u:system_r:container_t:s0-s0:c0.c1023 tcontext=system_u:object_r:shadow_t:s0 tclass=file permissive=0
 </code></pre>
 
-<strong><p>Fine, Now SELinux is protecting to search /etc/shadow file.</p></strong>
+<p>Fine, Now SELinux is protecting to search /etc/shadow file.</p>
 
 <ul>
 <li><p>Also you can&rsquo;t read /etc/shadow file because the file permission is &ldquo;000&rdquo;.</p>
 
 <pre><code>/ # cat /proc/6/fd/4/../../../etc/shadow
+</code></pre>
 
-cat: can&rsquo;t open &lsquo;/proc/6/fd/4/../../../etc/shadow&rsquo;: Permission denied
-</code></pre></li>
+<p>cat: can&rsquo;t open &lsquo;/proc/6/fd/4/../../../etc/shadow&rsquo;: Permission denied</p></li>
 </ul>
 
 <p>If I change /etc/shadow file as &ldquo;755&rdquo; permission, the DAC control will permit
 to read the file.</p>
 
-<pre><code>
-[root@fedora25 ~]# chmod 755 /etc/shadow
+<pre><code>    [root@fedora25 ~]# chmod 755 /etc/shadow
 [root@fedora25 ~]# ls -lh /etc/shadow
 -rwxr-xr-x. 1 root root 1.3K Jan 20 08:30 /etc/shadow
 </code></pre>
@@ -350,7 +347,7 @@ denied by SELinux;</p>
 
 <h2 id="conclusion">Conclusion</h2>
 
-<strong><p>Now we know from PoC that we could mitigate CVE-2016-9962 by enabling SELinux.</p></strong>
+<p>Now we know from PoC that we could mitigate CVE-2016-9962 by enabling SELinux.</p>
 
 <p>So we should enable SELinux in container environment also and making more
 safety(and keeping to have mitigate way even if in 0-day situation)
@@ -372,7 +369,8 @@ environment.</p>
             <div class="eight columns">
                 <div class="li-pagination-previous">
                     
-                        &nbsp;
+                        Later article<br />
+                        <a href="https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/"> OpenSSH vulnerability (CVE-2015-6565) PoC with SELinux</a>
                     
                 </div>
             </div>
@@ -380,7 +378,7 @@ environment.</p>
                 <div class="li-pagination-next">
                     
                         Older article<br />
-                        <a href="https://jsoss-sig.github.io/about/"> About SOSS SIG</a>
+                        <a href="https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/"> Docker vulnerability (CVE-2016-9962) PoC with SELinux</a>
                     
                 </div>
             </div>

