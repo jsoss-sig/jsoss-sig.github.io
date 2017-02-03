@@ -12,6 +12,11 @@
   </url>
   
   <url>
+    <loc>https://jsoss-sig.github.io/post/omok-selinux-openssh-20170201/</loc>
+    <lastmod>2017-02-02T09:46:27+09:00</lastmod>
+  </url>
+  
+  <url>
     <loc>https://jsoss-sig.github.io/post/omok-selinux-docker-20170123/</loc>
     <lastmod>2017-01-23T13:07:34+09:00</lastmod>
   </url>
@@ -29,7 +34,7 @@
   
   <url>
     <loc>https://jsoss-sig.github.io/post/</loc>
-    <lastmod>2017-01-23T13:07:34+09:00</lastmod>
+    <lastmod>2017-02-02T09:46:27+09:00</lastmod>
     <priority>0</priority>
   </url>
   
