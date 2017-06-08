@@ -90,15 +90,16 @@ I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.</strong></p>
 <li><p>Download and install vulnerable version of Struts2. I used both of struts-2.5.10. Copy struts2-showcase.war under /var/lib/tomcat/webapps</p>
 
 <pre><code>root@cent7enc:~# ls /var/ls /var/lib/tomcat/webapps/*war
-</code></pre>
-
-<p>/var/lib/tomcat/webapps/struts2-showcase.war</p></li>
+/var/lib/tomcat/webapps/struts2-showcase.war
+</code></pre></li>
 
 <li><p>Download and copy the PoC code on remote. There are many sample site for the PoC, then I&rsquo;m not explaining it in here.</p></li>
 
-<li><p>To avoid normal Unix permission check, I changed /etc/shadow permission to 755.
-    root@cent7enc:~# ls -lZ /etc/shadow
--rw-r&ndash;r&ndash;. root root system_u:object_r:shadow_t:s0    /etc/shadow</p></li>
+<li><p>To avoid normal Unix permission check, I changed /etc/shadow permission to 755.</p>
+
+<pre><code>root@cent7enc:~# ls -lZ /etc/shadow
+-rw-r--r--. root root system_u:object_r:shadow_t:s0        /etc/shadow
+</code></pre></li>
 </ol>
 
 <hr />
@@ -109,24 +110,22 @@ I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.</strong></p>
 <li><p>Confirm SELinux is Permissive mode;</p>
 
 <pre><code>root@cent7enc:~# getenforce
-</code></pre>
-
-<p>Permissive</p></li>
+Permissive
+</code></pre></li>
 
 <li><p>Run PoC from remote host(jssosug@vmhost);</p>
 
-<p>jsossug@vmhost:~$ python attack.py <a href="http://172.16.148.130:8080/struts2-showcase/showcase.action">http://172.16.148.130:8080/struts2-showcase/showcase.action</a> &ldquo;cat /etc/shadow&rdquo;
-    [<em>] CVE: 2017-5638 - Apache Struts2 S2-045
-    [</em>] cmd: cat /etc/shadow</p>
+<pre><code> jsossug@vmhost:~$ python attack.py http://172.16.148.130:8080/struts2-showcase/showcase.action &quot;cat /etc/shadow&quot;
+ CVE: 2017-5638 - Apache Struts2 S2-045
+ cmd: cat /etc/shadow
+ root:XXXXXX.::0:99999:7:::
+ bin:*:17110:0:99999:7:::
+ daemon:*:17110:0:99999:7:::
+ --snip--
+ sshd:!!:17247::::::
+ jssosug:XXXXXXXXXXXX::0:99999:7:::
 
-<pre><code>root:XXXXXX.::0:99999:7:::
-bin:*:17110:0:99999:7:::
-daemon:*:17110:0:99999:7:::
---snip--
-sshd:!!:17247::::::
-jssosug:XXXXXXXXXXXX::0:99999:7:::
-
-jsossug@vmhost:~$
+ jsossug@vmhost:~$
 </code></pre></li>
 </ol>
 
@@ -138,17 +137,16 @@ jsossug@vmhost:~$
 <li><p>Reboot and set SELinux as Enforcing.</p>
 
 <pre><code>root@cent7enc:~# getenforce
-</code></pre>
-
-<p>Permissive</p></li>
+Permissive
+</code></pre></li>
 
 <li><p>Run PoC code again. Even if SELinux is Enforcing, still you can see /etc/shadow(so bad&hellip;);</p>
 
-<p>jsossug@vmhost:~$ python attack.py <a href="http://172.16.148.130:8080/struts2-showcase/showcase.action">http://172.16.148.130:8080/struts2-showcase/showcase.action</a> &ldquo;cat /etc/shadow&rdquo;
-    [<em>] CVE: 2017-5638 - Apache Struts2 S2-045
-    [</em>] cmd: cat /etc/shadow</p>
+<pre><code>jsossug@vmhost:~$ python attack.py http://172.16.148.130:8080/struts2-showcase/showcase.action &quot;cat /etc/shadow&quot;
+CVE: 2017-5638 - Apache Struts2 S2-045
+cmd: cat /etc/shadow
 
-<pre><code>root:XXXXXX.::0:99999:7:::
+root:XXXXXX.::0:99999:7:::
 bin:*:17110:0:99999:7:::
 daemon:*:17110:0:99999:7:::
 --snip--
@@ -168,48 +166,46 @@ jsossug@vmhost:~$
 <ol>
 <li><p>For understanding it, attack from remote(vmhost) by using below command;</p>
 
-<p>jsossug@vmhost:~$ python attack.py <a href="http://172.16.148.130:8080/struts2-showcase/showcase.action">http://172.16.148.130:8080/struts2-showcase/showcase.action</a> &ldquo;vi /tmp/abcd&rdquo;
-[<em>] CVE: 2017-5638 - Apache Struts2 S2-045
-[</em>] cmd: vi /tmp/abcd</p></li>
+<pre><code>jsossug@vmhost:~$ python attack.py http://172.16.148.130:8080/struts2-showcase/showcase.action &quot;vi /tmp/abcd&quot; 
+CVE: 2017-5638 - Apache Struts2 S2-045
+cmd: vi /tmp/abcd
+</code></pre></li>
 
 <li><p>On Struts PC, check domain who is running &ldquo;vi /tmp/abcd&rdquo;;</p>
 
 <pre><code>root@cent7enc:~# ps axZ|grep abcd
-</code></pre>
-
-<p>system_u:system_r:tomcat_t:s0     3251 ?        S      0:00 vi /tmp/abcd</p></li>
+system_u:system_r:tomcat_t:s0         3251 ?                S          0:00 vi /tmp/abcd
+</code></pre></li>
 
 <li><p>Check &ldquo;tomcat_t&rdquo; inheriented domain with seinfo;</p>
 
 <pre><code>root@cent7enc:~# seinfo -ttomcat_t -x
-</code></pre>
-
-<p>tomcat_t
-    can_change_object_identity
-    can_load_kernmodule
-    can_load_policy
-    can_setbool
-    can_setenforce
-    corenet_unconfined_type
-    corenet_unlabeled_type
-    devices_unconfined_type
-    domain
-    files_unconfined_type
-    filesystem_unconfined_type
-    kern_unconfined
-    kernel_system_state_reader
-    process_uncond_exempt
-    selinux_unconfined_type
-    storage_unconfined_type
-    unconfined_domain_type
-    dbusd_unconfined
-    daemon
-    syslog_client_type
-    sepgsql_unconfined_type
-    tomcat_domain
-    userdom_filetrans_type
-    x_domain
-    xserver_unconfined_type</p></li>
+tomcat_t
+  can_change_object_identity
+  can_load_kernmodule
+  can_setbool
+  can_setenforce
+  corenet_unconfined_type
+  corenet_unlabeled_type
+  devices_unconfined_type
+  domain
+  files_unconfined_type
+  filesystem_unconfined_type
+  kern_unconfined
+  kernel_system_state_reader
+  process_uncond_exempt
+  selinux_unconfined_type
+  storage_unconfined_type
+  unconfined_domain_type
+  dbusd_unconfined
+  daemon
+  syslog_client_type
+  sepgsql_unconfined_type
+  tomcat_domain
+  userdom_filetrans_type
+  x_domain
+  xserver_unconfined_type
+</code></pre></li>
 </ol>
 
 <p>So we found tomcat_t is in several &ldquo;unconfined&rdquo; domain.
@@ -225,44 +221,45 @@ I reported it on bugzilla(<a href="https://bugzilla.redhat.com/show_bug.cgi?id=1
 <pre><code>root@cent7enc:~# rpm -Fvh selinux-policy-3.13.1-145.el7.noarch.rpm selinux-policy-targeted-3.13.1-145.el7.noarch.rpm 
 
 root@cent7enc:~# getenforce
-</code></pre>
-
-<p>Enforcing</p></li>
+Enforcing
+</code></pre></li>
 
 <li><p>Run PoC from remote same as before;</p>
 
-<p>jsossug@vmhost:~$ python attack.py <a href="http://172.16.148.130:8080/struts2-showcase/showcase.action">http://172.16.148.130:8080/struts2-showcase/showcase.action</a> &ldquo;cat /etc/shadow&rdquo;
-[<em>] CVE: 2017-5638 - Apache Struts2 S2-045
-[</em>] cmd: cat /etc/shadow</p>
+<pre><code>jsossug@vmhost:~$ python attack.py http://172.16.148.130:8080/struts2-showcase/showcase.action &quot;cat /etc/shadow&quot; 
+CVE: 2017-5638 - Apache Struts2 S2-045
+cmd: cat /etc/shadow
 
-<pre><code>cat: /etc/shadow: Permission denied
+cat: /etc/shadow: Permission denied
 </code></pre></li>
 
-<li><p>Check AVC log on Struts PC;
-type=AVC msg=audit(1496882036.860:219): avc:  denied  { read } for  pid=4413 comm=&ldquo;cat&rdquo; name=&ldquo;shadow&rdquo; dev=&ldquo;dm-1&rdquo; ino=34456196 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file</p></li>
+<li><p>Check AVC log on Struts PC;</p>
+
+<pre><code>type=AVC msg=audit(1496882036.860:219): avc:  denied  { read } for  pid=4413 comm=&quot;cat&quot; name=&quot;shadow&quot; dev=&quot;dm-1&quot; ino=34456196 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file
+</code></pre></li>
 
 <li><p>Check &ldquo;tomcat_t&rdquo; inheriented domain with seinfo;</p>
 
 <pre><code>root@cent7enc:~# seinfo -ttomcat_t -x
+tomcat_t
+  nsswitch_domain
+  corenet_unlabeled_type
+  domain
+  kernel_system_state_reader
+  netlabel_peer_type
+  daemon
+  syslog_client_type
+  pcmcia_typeattr_7
+  pcmcia_typeattr_6
+  pcmcia_typeattr_5
+  pcmcia_typeattr_4
+  pcmcia_typeattr_3
+  pcmcia_typeattr_2
+  pcmcia_typeattr_1
+  tomcat_domain
 </code></pre>
 
-<p>tomcat_t
-    nsswitch_domain
-    corenet_unlabeled_type
-    domain
-    kernel_system_state_reader
-    netlabel_peer_type
-    daemon
-    syslog_client_type
-    pcmcia_typeattr_7
-    pcmcia_typeattr_6
-    pcmcia_typeattr_5
-    pcmcia_typeattr_4
-    pcmcia_typeattr_3
-    pcmcia_typeattr_2
-    pcmcia_typeattr_1
-    tomcat_domain
-So now we can see no &ldquo;Unconfined&rdquo; domain in there.</p></li>
+<p>So now we can see no &ldquo;Unconfined&rdquo; domain in there.</p></li>
 </ol>
 
 <hr />
