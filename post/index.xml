@@ -7,8 +7,222 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Sun, 05 Mar 2017 19:55:34 +0900</lastBuildDate>
+    <lastBuildDate>Thu, 08 Jun 2017 09:53:10 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/post/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>CVE-2017-5638(Struts2) PoC with SELinux</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170607/</link>
+      <pubDate>Thu, 08 Jun 2017 09:53:10 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170607/</guid>
+      <description>
+
+&lt;p&gt;We did &amp;ldquo;Famous&amp;rdquo; Struts2 vulnerability(CVE-2017-5638) PoC to check how SELinux can mitigate that vulnerability.
+During the PoC, we found current policy problem, then reported it on bugzilla.
+So, I would write the information for that PoC and SELinux policy problem.&lt;/p&gt;
+
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
+&lt;h2 id=&#34;prepare-for-poc&#34;&gt;Prepare for PoC&lt;/h2&gt;
+
+&lt;p&gt;Here is a description how to reproduce it. &lt;strong&gt;I used CentOS 7.3(CentOS-7-x86_64-DVD-1611.iso)image for the PoC.
+I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Install tomcat and related packages for working Struts2.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Download and install vulnerable version of Struts2. I used both of struts-2.5.10. Copy struts2-showcase.war under /var/lib/tomcat/webapps&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# ls /var/ls /var/lib/tomcat/webapps/*war
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;/var/lib/tomcat/webapps/struts2-showcase.war&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Download and copy the PoC code on remote. There are many sample site for the PoC, then I&amp;rsquo;m not explaining it in here.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;To avoid normal Unix permission check, I changed /etc/shadow permission to 755.
+    root@cent7enc:~# ls -lZ /etc/shadow
+-rw-r&amp;ndash;r&amp;ndash;. root root system_u:object_r:shadow_t:s0    /etc/shadow&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-no-selinux-selinux-permissive&#34;&gt;PoC with no SELinux(SELinux Permissive)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Confirm SELinux is Permissive mode;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# getenforce
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Permissive&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from remote host(jssosug@vmhost);&lt;/p&gt;
+
+&lt;p&gt;jsossug@vmhost:~$ python attack.py &lt;a href=&#34;http://172.16.148.130:8080/struts2-showcase/showcase.action&#34;&gt;http://172.16.148.130:8080/struts2-showcase/showcase.action&lt;/a&gt; &amp;ldquo;cat /etc/shadow&amp;rdquo;
+    [&lt;em&gt;] CVE: 2017-5638 - Apache Struts2 S2-045
+    [&lt;/em&gt;] cmd: cat /etc/shadow&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root:XXXXXX.::0:99999:7:::
+bin:*:17110:0:99999:7:::
+daemon:*:17110:0:99999:7:::
+--snip--
+sshd:!!:17247::::::
+jssosug:XXXXXXXXXXXX::0:99999:7:::
+
+jsossug@vmhost:~$
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-selinux-enabled-selinux-enforcing&#34;&gt;PoC with SELinux Enabled(SELinux Enforcing)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Reboot and set SELinux as Enforcing.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# getenforce
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Permissive&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC code again. Even if SELinux is Enforcing, still you can see /etc/shadow(so bad&amp;hellip;);&lt;/p&gt;
+
+&lt;p&gt;jsossug@vmhost:~$ python attack.py &lt;a href=&#34;http://172.16.148.130:8080/struts2-showcase/showcase.action&#34;&gt;http://172.16.148.130:8080/struts2-showcase/showcase.action&lt;/a&gt; &amp;ldquo;cat /etc/shadow&amp;rdquo;
+    [&lt;em&gt;] CVE: 2017-5638 - Apache Struts2 S2-045
+    [&lt;/em&gt;] cmd: cat /etc/shadow&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root:XXXXXX.::0:99999:7:::
+bin:*:17110:0:99999:7:::
+daemon:*:17110:0:99999:7:::
+--snip--
+sshd:!!:17247::::::
+jssosug:XXXXXXXXXXXX::0:99999:7:::
+
+jsossug@vmhost:~$
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;check-selinux-policy&#34;&gt;Check SELinux Policy&lt;/h2&gt;
+
+&lt;p&gt;Now we understand that SELinux can&amp;rsquo;t mitigate CVE-2017-6074. Why it is happened?&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;For understanding it, attack from remote(vmhost) by using below command;&lt;/p&gt;
+
+&lt;p&gt;jsossug@vmhost:~$ python attack.py &lt;a href=&#34;http://172.16.148.130:8080/struts2-showcase/showcase.action&#34;&gt;http://172.16.148.130:8080/struts2-showcase/showcase.action&lt;/a&gt; &amp;ldquo;vi /tmp/abcd&amp;rdquo;
+[&lt;em&gt;] CVE: 2017-5638 - Apache Struts2 S2-045
+[&lt;/em&gt;] cmd: vi /tmp/abcd&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;On Struts PC, check domain who is running &amp;ldquo;vi /tmp/abcd&amp;rdquo;;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# ps axZ|grep abcd
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;system_u:system_r:tomcat_t:s0     3251 ?        S      0:00 vi /tmp/abcd&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Check &amp;ldquo;tomcat_t&amp;rdquo; inheriented domain with seinfo;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# seinfo -ttomcat_t -x
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;tomcat_t
+    can_change_object_identity
+    can_load_kernmodule
+    can_load_policy
+    can_setbool
+    can_setenforce
+    corenet_unconfined_type
+    corenet_unlabeled_type
+    devices_unconfined_type
+    domain
+    files_unconfined_type
+    filesystem_unconfined_type
+    kern_unconfined
+    kernel_system_state_reader
+    process_uncond_exempt
+    selinux_unconfined_type
+    storage_unconfined_type
+    unconfined_domain_type
+    dbusd_unconfined
+    daemon
+    syslog_client_type
+    sepgsql_unconfined_type
+    tomcat_domain
+    userdom_filetrans_type
+    x_domain
+    xserver_unconfined_type&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;So we found tomcat_t is in several &amp;ldquo;unconfined&amp;rdquo; domain.
+I reported it on bugzilla(&lt;a href=&#34;https://bugzilla.redhat.com/show_bug.cgi?id=1432083&#34;&gt;https://bugzilla.redhat.com/show_bug.cgi?id=1432083&lt;/a&gt;), then fixed version of policy(selinux-policy-3.13.1-145.el7.noarch.rpm)&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;check-selinux-updated-policy&#34;&gt;Check SELinux Updated Policy&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Fixed version of policy is in RHEL-7.4Beta image. Just for confirmation, I installed those policy on CentOS7(PoC).&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# rpm -Fvh selinux-policy-3.13.1-145.el7.noarch.rpm selinux-policy-targeted-3.13.1-145.el7.noarch.rpm 
+
+root@cent7enc:~# getenforce
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Enforcing&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from remote same as before;&lt;/p&gt;
+
+&lt;p&gt;jsossug@vmhost:~$ python attack.py &lt;a href=&#34;http://172.16.148.130:8080/struts2-showcase/showcase.action&#34;&gt;http://172.16.148.130:8080/struts2-showcase/showcase.action&lt;/a&gt; &amp;ldquo;cat /etc/shadow&amp;rdquo;
+[&lt;em&gt;] CVE: 2017-5638 - Apache Struts2 S2-045
+[&lt;/em&gt;] cmd: cat /etc/shadow&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;cat: /etc/shadow: Permission denied
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Check AVC log on Struts PC;
+type=AVC msg=audit(1496882036.860:219): avc:  denied  { read } for  pid=4413 comm=&amp;ldquo;cat&amp;rdquo; name=&amp;ldquo;shadow&amp;rdquo; dev=&amp;ldquo;dm-1&amp;rdquo; ino=34456196 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Check &amp;ldquo;tomcat_t&amp;rdquo; inheriented domain with seinfo;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# seinfo -ttomcat_t -x
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;tomcat_t
+    nsswitch_domain
+    corenet_unlabeled_type
+    domain
+    kernel_system_state_reader
+    netlabel_peer_type
+    daemon
+    syslog_client_type
+    pcmcia_typeattr_7
+    pcmcia_typeattr_6
+    pcmcia_typeattr_5
+    pcmcia_typeattr_4
+    pcmcia_typeattr_3
+    pcmcia_typeattr_2
+    pcmcia_typeattr_1
+    tomcat_domain
+So now we can see no &amp;ldquo;Unconfined&amp;rdquo; domain in there.&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;From this PoC we can say&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;SELinux can mitigate Struts2 vulnerability if &amp;ldquo;Policy is good.&amp;rdquo;;&lt;/li&gt;
+&lt;li&gt;Last SELinux Policy is treating &amp;ldquo;tomcat_t&amp;rdquo; as &amp;ldquo;unconfined domain&amp;rdquo;.&lt;/li&gt;
+&lt;li&gt;Latest version of SELinux Policy will solve the problem.&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+    </item>
     
     <item>
       <title>CVE-2017-6074 PoC with SELinux(on Ubuntu)</title>
