@@ -120,12 +120,14 @@ selinux_setup(const char *role, const char *type, const char *ttyn,
     }
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
-&lt;li&gt;&lt;p&gt;During the relabel_tty(), program will re-open ttyn which is now &amp;ldquo;/etc/passwd&amp;rdquo;.
-    &amp;ndash;snip&amp;ndash;
-            /* Re-open tty to get new label and reset std{in,out,err} */
-            close(se_state.ttyfd);
-            se_state.ttyfd = open(ttyn, O_RDWR|O_NONBLOCK);
-    &amp;ndash;snip&amp;ndash;&lt;/p&gt;
+&lt;li&gt;&lt;p&gt;During the relabel_tty(), program will re-open ttyn which is now &amp;ldquo;/etc/passwd&amp;rdquo;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;--snip--
+        /* Re-open tty to get new label and reset std{in,out,err} */
+        close(se_state.ttyfd);
+        se_state.ttyfd = open(ttyn, O_RDWR|O_NONBLOCK);
+--snip--
+&lt;/code&gt;&lt;/pre&gt;
 
 &lt;p&gt;And call dup2(se_state.ttyfd, ptyfd) for duplicating fd.&lt;/p&gt;
 
