@@ -7,8 +7,111 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Sat, 24 Jun 2017 02:33:08 +0900</lastBuildDate>
+    <lastBuildDate>Wed, 09 Aug 2017 16:48:48 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>S2-048: CVE-2017-9791(Struts2) PoC with SELinux</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170809/</link>
+      <pubDate>Wed, 09 Aug 2017 16:48:48 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170809/</guid>
+      <description>
+
+&lt;p&gt;We did another &amp;ldquo;Famous&amp;rdquo; Struts2 vulnerability(CVE-2017-9791) PoC to check how SELinux can mitigate that vulnerability.&lt;/p&gt;
+
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
+&lt;h2 id=&#34;prepare-for-poc&#34;&gt;Prepare for PoC&lt;/h2&gt;
+
+&lt;p&gt;Here is a description how to reproduce it. &lt;strong&gt;I used Fedora25 image for the PoC.
+I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.&lt;/strong&gt;
+Actually, this PoC environment is almost same as Previous vulnerability (CVE-2017-5638 which we did on June.).
+Also, I used selinux-policy-targeted-3.13.1-225.11.fc25.noarch because previous policy had un-confined tomcat_t policy(See &lt;a href=&#34;http://www.secureoss.jp/post/omok-selinux-struts2-20170607/&#34;&gt;http://www.secureoss.jp/post/omok-selinux-struts2-20170607/&lt;/a&gt;).&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Install tomcat and related packages for working Struts2.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Download and install vulnerable version of Struts2. I used both of struts-2.5.10. Copy struts2-showcase.war under /var/lib/tomcat/webapps&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@fedora25:~# ls /var/ls /var/lib/tomcat/webapps/*war
+/var/lib/tomcat/webapps/struts2-showcase.war
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Download and copy the PoC code on remote. There are many sample site for the PoC, then I&amp;rsquo;m not explaining it in here.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;To avoid normal Unix permission check for the PoC, I changed /etc/shadow permission to 755.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@fedora25:~# ls -lZ /etc/shadow
+-rw-r--r--. root root system_u:object_r:shadow_t:s0        /etc/shadow
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-no-selinux-selinux-permissive&#34;&gt;PoC with no SELinux(SELinux Permissive)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Confirm SELinux is Permissive mode;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@fedora25:~# getenforce
+Permissive
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from remote host(jssosug@vmhost);&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; jsossug@vmhost:~$ python Struts048.py http://172.16.148.147:8080/struts2-showcase/integration/saveGangster.action &amp;quot;cat /etc/shadow&amp;quot;
+
+ root:XXXXXX.::0:99999:7:::
+ bin:*:17110:0:99999:7:::
+ daemon:*:17110:0:99999:7:::
+ --snip--
+ sshd:!!:17247::::::
+ jssosug:XXXXXXXXXXXX::0:99999:7:::
+
+ jsossug@vmhost:~$
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-selinux-enabled-selinux-enforcing&#34;&gt;PoC with SELinux Enabled(SELinux Enforcing)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Reboot and set SELinux as Enforcing.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@fedora25:~# getenforce
+Permissive
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from remote same as before;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;jsossug@vmhost:~$ python Struts048.py http://172.16.148.147:8080/struts2-showcase/integration/saveGangster.action &amp;quot;cat /etc/shadow&amp;quot;
+cmd: cat /etc/shadow
+
+cat: /etc/shadow: Permission denied
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Check AVC log on Struts PC;&lt;/p&gt;
+
+&lt;p&gt;type=AVC msg=audit(1598882036.160:219): avc:  denied  { read } for  pid=4413 comm=&amp;ldquo;cat&amp;rdquo; name=&amp;ldquo;shadow&amp;rdquo; dev=&amp;ldquo;dm-1&amp;rdquo; ino=34456196 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;From this PoC we can say&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;SELinux can mitigate Struts2 vulnerability &amp;ldquo;if Policy is updated&amp;rdquo;.;&lt;/li&gt;
+&lt;li&gt;Last SELinux Policy is treating &amp;ldquo;tomcat_t&amp;rdquo; as &amp;ldquo;unconfined domain&amp;rdquo;.&lt;/li&gt;
+&lt;li&gt;Latest version of SELinux Policy will solve the problem.&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+    </item>
     
     <item>
       <title>sudo vulnerability detail with SELinux(CVE-2017-1000367/CVE-2017-1000368)</title>
