@@ -98,7 +98,7 @@ Also, I used selinux-policy-targeted-3.13.1-145.el7.noarch (See related post: <a
 <li><p>To avoid normal Unix permission check for the PoC, I changed /etc/shadow permission to 755.</p>
 
 <pre><code>root@centos7:~# ls -lZ /etc/shadow
--rw-r--r--. root root system_u:object_r:shadow_t:s0        /etc/shadow
+-rwxr-xr-x. root root system_u:object_r:shadow_t:s0        /etc/shadow
 </code></pre></li>
 </ol>
 
@@ -152,7 +152,7 @@ Permissive
 <li><p>Reboot and set SELinux as Enforcing.</p>
 
 <pre><code>root@centos7:~# getenforce
-Permissive
+Enforcing
 </code></pre></li>
 
 <li><p>Run PoC from msfconsole(Metasploit). AA.AA.AA.AA is Kali Linux IP, and XX.XX.X.XX is Struts2 PoC server;</p>
