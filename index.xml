@@ -1349,7 +1349,7 @@ Enforcing
 
 &lt;li&gt;&lt;p&gt;run new container in shell2 with &amp;ldquo;runc exec&amp;rdquo; command. It is pausing 500sec;&lt;/p&gt;
 
-&lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc run ctr
+&lt;pre&gt;&lt;code&gt;[root@localhost ~]# runc exec ctr sh
 &lt;/code&gt;&lt;/pre&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;run &amp;ldquo;ps ax&amp;rdquo; in shell1. You can see shell2 process;&lt;/p&gt;
