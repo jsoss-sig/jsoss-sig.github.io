@@ -32,13 +32,25 @@ SIOS OSSセキュリティブログ(&lt;a href=&#34;https://oss.sios.com/securit
 
 &lt;li&gt;&lt;p&gt;脆弱性情報&lt;/p&gt;
 
-&lt;p&gt;exploit DB(&lt;a href=&#34;http://exploit-db.com/&#34;&gt;http://exploit-db.com/&lt;/a&gt;)&lt;br /&gt;
+&lt;p&gt;exploit DB (&lt;a href=&#34;http://exploit-db.com/&#34;&gt;http://exploit-db.com/&lt;/a&gt;)&lt;br /&gt;
 CVE (&lt;a href=&#34;http://cve.mitre.org/&#34;&gt;http://cve.mitre.org/&lt;/a&gt;)&lt;br /&gt;
-CVE-DB(&lt;a href=&#34;http://cve-db.secureoss.jp/&#34;&gt;http://cve-db.secureoss.jp/&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+CVE Data Updates and RSS Feeds (&lt;a href=&#34;https://cve.mitre.org/cve/data_updates.html&#34;&gt;https://cve.mitre.org/cve/data_updates.html&lt;/a&gt;)&lt;br /&gt;
+CVE-DB (&lt;a href=&#34;http://cve-db.secureoss.jp/&#34;&gt;http://cve-db.secureoss.jp/&lt;/a&gt;)&lt;br /&gt;
+CVE Twitter (&lt;a href=&#34;https://twitter.com/CVEnew&#34;&gt;https://twitter.com/CVEnew&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;各OSSセキュリティ情報&lt;/p&gt;
+
+&lt;p&gt;Samba Security Updates and Information (&lt;a href=&#34;https://www.samba.org/samba/history/security.html&#34;&gt;https://www.samba.org/samba/history/security.html&lt;/a&gt;)&lt;br /&gt;
+Apache Tomcat 9 vulnerabilities (&lt;a href=&#34;http://tomcat.apache.org/security-9.html&#34;&gt;http://tomcat.apache.org/security-9.html&lt;/a&gt;)&lt;br /&gt;
+PostgreSQL: Security Information (&lt;a href=&#34;https://www.postgresql.org/support/security/&#34;&gt;https://www.postgresql.org/support/security/&lt;/a&gt;)&lt;br /&gt;
+OpenSSL News Log (&lt;a href=&#34;https://www.openssl.org/news/newslog.html&#34;&gt;https://www.openssl.org/news/newslog.html&lt;/a&gt;)&lt;br /&gt;
+Postfix Announcements (&lt;a href=&#34;http://www.postfix.org/announcements.html&#34;&gt;http://www.postfix.org/announcements.html&lt;/a&gt;)&lt;br /&gt;
+BIND 9 Security Vulnerability Matric (&lt;a href=&#34;https://kb.isc.org/article/AA-00913&#34;&gt;https://kb.isc.org/article/AA-00913&lt;/a&gt;)&lt;br /&gt;
+Apache httpd 2.4 vulnerabilities (&lt;a href=&#34;http://httpd.apache.org/security/vulnerabilities_24.html&#34;&gt;http://httpd.apache.org/security/vulnerabilities_24.html&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
 
 &lt;li&gt;&lt;p&gt;技術の会メンバー連載&lt;/p&gt;
 
-&lt;p&gt;ThinkIT連載記事(&lt;a href=&#34;https://thinkit.co.jp/series/6638&#34;&gt;https://thinkit.co.jp/series/6638&lt;/a&gt;)&lt;br /&gt;
+&lt;p&gt;ThinkIT連載記事 (&lt;a href=&#34;https://thinkit.co.jp/series/6638&#34;&gt;https://thinkit.co.jp/series/6638&lt;/a&gt;)&lt;br /&gt;
 日経Linux連載記事(&lt;a href=&#34;http://itpro.nikkeibp.co.jp/atcl/column/17/041900153&#34;&gt;http://itpro.nikkeibp.co.jp/atcl/column/17/041900153&lt;/a&gt;)&lt;br /&gt;
 ＠IT連載記事: OSS脆弱性ウォッチ(&lt;a href=&#34;http://www.atmarkit.co.jp/ait/series/6764/&#34;&gt;http://www.atmarkit.co.jp/ait/series/6764/&lt;/a&gt;)&lt;br /&gt;
 ＠IT連載記事: Keycloak超入門(&lt;a href=&#34;http://www.atmarkit.co.jp/ait/series/7363/&#34;&gt;http://www.atmarkit.co.jp/ait/series/7363/&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
