@@ -7,8 +7,44 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>ja-JP</language>
     <copyright>SOSS SIG all rights reserved. 2016</copyright>
-    <lastBuildDate>Mon, 11 Sep 2017 15:59:59 +0900</lastBuildDate>
+    <lastBuildDate>Wed, 31 Jan 2018 11:04:51 +0900</lastBuildDate>
     <atom:link href="https://jsoss-sig.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>リンク(links)</title>
+      <link>https://jsoss-sig.github.io/links/</link>
+      <pubDate>Wed, 31 Jan 2018 11:04:51 +0900</pubDate>
+      
+      <guid>https://jsoss-sig.github.io/links/</guid>
+      <description>
+
+&lt;h2 id=&#34;リンク&#34;&gt;リンク&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;p&gt;学術・研究系&lt;/p&gt;
+
+&lt;p&gt;岡山大学 山内教授(&lt;a href=&#34;http://www.swlab.cs.okayama-u.ac.jp/~yamauchi/index-j.html&#34;&gt;http://www.swlab.cs.okayama-u.ac.jp/~yamauchi/index-j.html&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;ブログ等&lt;/p&gt;
+
+&lt;p&gt;Red Hat Security Blog(&lt;a href=&#34;https://access.redhat.com/blogs/product-security&#34;&gt;https://access.redhat.com/blogs/product-security&lt;/a&gt;)&lt;br /&gt;
+SIOS OSSセキュリティブログ(&lt;a href=&#34;https://oss.sios.com/security&#34;&gt;https://oss.sios.com/security&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;脆弱性情報&lt;/p&gt;
+
+&lt;p&gt;exploit DB(&lt;a href=&#34;http://exploit-db.com/&#34;&gt;http://exploit-db.com/&lt;/a&gt;)&lt;br /&gt;
+CVE (&lt;a href=&#34;http://cve.mitre.org/&#34;&gt;http://cve.mitre.org/&lt;/a&gt;)&lt;br /&gt;
+CVE-DB(&lt;a href=&#34;http://cve-db.secureoss.jp/&#34;&gt;http://cve-db.secureoss.jp/&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+
+&lt;li&gt;&lt;p&gt;技術の会メンバー連載&lt;/p&gt;
+
+&lt;p&gt;ThinkIT連載記事(&lt;a href=&#34;https://thinkit.co.jp/series/6638&#34;&gt;https://thinkit.co.jp/series/6638&lt;/a&gt;)&lt;br /&gt;
+日経Linux連載記事(&lt;a href=&#34;http://itpro.nikkeibp.co.jp/atcl/column/17/041900153&#34;&gt;http://itpro.nikkeibp.co.jp/atcl/column/17/041900153&lt;/a&gt;)&lt;br /&gt;
+＠IT連載記事: OSS脆弱性ウォッチ(&lt;a href=&#34;http://www.atmarkit.co.jp/ait/series/6764/&#34;&gt;http://www.atmarkit.co.jp/ait/series/6764/&lt;/a&gt;)&lt;br /&gt;
+＠IT連載記事: Keycloak超入門(&lt;a href=&#34;http://www.atmarkit.co.jp/ait/series/7363/&#34;&gt;http://www.atmarkit.co.jp/ait/series/7363/&lt;/a&gt;)&lt;/p&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</description>
+    </item>
     
     <item>
       <title>S2-052: CVE-2017-9805(Struts2) PoC with SELinux</title>
